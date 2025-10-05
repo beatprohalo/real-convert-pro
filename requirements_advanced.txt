@@ -1,0 +1,66 @@
+# Enhanced requirements for advanced processing features
+# Core audio processing (existing)
+librosa>=0.10.0
+soundfile>=0.12.0
+numpy>=1.24.0
+scipy>=1.10.0
+
+# Advanced processing and optimization
+psutil>=5.9.0  # System monitoring
+joblib>=1.3.0  # Parallel processing
+
+# GPU acceleration (optional but recommended)
+# Uncomment based on your GPU setup:
+
+# For NVIDIA GPUs with CUDA:
+# cupy-cuda11x>=12.0.0  # For CUDA 11.x
+# cupy-cuda12x>=12.0.0  # For CUDA 12.x
+
+# PyTorch for GPU acceleration:
+# torch>=2.0.0
+# torchaudio>=2.0.0
+
+# JAX for XLA acceleration:
+# jax>=0.4.0
+# jaxlib>=0.4.0
+
+# Machine learning and analysis
+scikit-learn>=1.3.0
+pandas>=2.0.0  # For data analysis
+matplotlib>=3.7.0  # For visualization
+
+# Audio feature extraction and analysis
+essentia>=2.1  # Advanced audio analysis
+music21>=9.1.0  # Music theory analysis
+pyworld>=0.3.0  # Fundamental frequency estimation
+
+# Audio effects and processing
+pyrubberband>=0.3.0  # Time-stretching
+noisereduce>=3.0.0  # Noise reduction
+pysndfx>=0.3.0  # Audio effects
+
+# Loudness analysis
+pyloudnorm>=0.1.1
+
+# Audio fingerprinting
+pyacoustid>=1.2.0  # Chromaprint bindings
+
+# File format support
+mutagen>=1.47.0  # Metadata reading
+eyed3>=0.9.0  # MP3 metadata
+
+# Progress bars and UI
+tqdm>=4.65.0  # Progress bars
+rich>=13.0.0  # Rich terminal output
+
+# Database and storage
+sqlalchemy>=2.0.0  # Database ORM
+h5py>=3.9.0  # HDF5 for large data storage
+
+# Web interfaces (optional)
+flask>=2.3.0  # Web interface
+plotly>=5.15.0  # Interactive plots
+
+# Testing and development
+pytest>=7.4.0
+pytest-benchmark>=4.0.0

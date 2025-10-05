@@ -1,0 +1,20 @@
+{
+  "sample_rate": 44100,
+  "bit_depth": 24,
+  "normalize_audio": true,
+  "remove_silence": false,
+  "auto_categorize": true,
+  "preserve_structure": false,
+  "selected_format": "wav",
+  "category_keywords": {
+    "drums": ["kick", "snare", "hihat", "cymbal", "tom", "drum", "perc", "percussion", "clap", "rim"],
+    "bass": ["bass", "sub", "808", "low", "bassline", "bottom"],
+    "melody": ["melody", "lead", "main", "hook", "theme", "melodic", "tune"],
+    "vocals": ["vocal", "voice", "singing", "rap", "spoken", "lyrics", "acapella"],
+    "fx": ["fx", "effect", "sweep", "riser", "impact", "crash", "whoosh", "transition"],
+    "loops": ["loop", "pattern", "sequence", "cycle", "phrase"],
+    "instruments": ["piano", "guitar", "synth", "violin", "flute", "sax", "trumpet", "organ"],
+    "chords": ["chord", "progression", "harmony", "pad", "strings"],
+    "arps": ["arp", "arpegio", "pluck", "sequence"]
+  }
+}

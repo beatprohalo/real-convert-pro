@@ -1,0 +1,61 @@
+# Audio Converter & Professional Tools Requirements
+# Install with: pip install -r requirements.txt
+
+# Core audio processing libraries
+librosa>=0.10.0
+soundfile>=0.12.0
+pydub>=0.25.0
+
+# Enhanced format support
+mutagen>=1.47.0          # Comprehensive metadata support for all formats
+eyed3>=0.9.0             # Enhanced MP3 support and metadata
+python-magic>=0.4.27     # File type detection
+audioread>=3.0.0         # Additional audio file reading support
+
+# Scientific computing (usually installed with librosa)
+numpy>=1.21.0
+scipy>=1.7.0
+
+# Audio analysis and processing
+resampy>=0.4.0
+numba>=0.56.0
+essentia>=2.1b6.dev374  # For comprehensive audio analysis
+pyloudnorm>=0.1.0       # For LUFS loudness metering
+chromaprint-py>=0.5.0   # For audio fingerprinting
+music21>=8.1.0          # For advanced music theory analysis
+scikit-learn>=1.0.0     # For machine learning-based analysis
+
+# Professional Audio Processing Tools
+pyrubberband>=0.3.0     # High-quality time-stretching and pitch shifting
+noisereduce>=2.0.0      # Advanced noise reduction algorithms
+
+# Machine Learning Libraries
+tensorflow>=2.10.0      # For deep learning models
+keras>=2.10.0           # Neural network framework
+joblib>=1.2.0           # For model serialization
+pandas>=1.5.0           # For data handling
+matplotlib>=3.5.0       # For visualization
+seaborn>=0.11.0         # For advanced visualization
+
+# Optional: for better performance
+llvmlite>=0.39.0
+
+# GUI dependencies (usually included with Python)
+# tkinter (built-in with Python)
+
+# System dependencies notes:
+# - FFmpeg is required for MP3, AAC, and other compressed formats
+# - Install FFmpeg separately based on your operating system:
+#   - macOS: brew install ffmpeg
+#   - Ubuntu/Debian: sudo apt install ffmpeg
+#   - Windows: Download from https://ffmpeg.org/
+#
+# - For pyrubberband (professional time-stretching):
+#   - macOS: brew install rubberband
+#   - Ubuntu/Debian: sudo apt install librubberband-dev
+#   - Windows: Download Rubber Band Library from https://breakfastquay.com/rubberband/
+#
+# - For better file type detection:
+#   - macOS: brew install libmagic
+#   - Ubuntu/Debian: sudo apt install libmagic1
+#   - Windows: Usually included with python-magic package

@@ -1,0 +1,17 @@
+{
+  "sample_rate": 44100,
+  "bit_depth": 16,
+  "normalize_audio": true,
+  "remove_silence": true,
+  "auto_categorize": true,
+  "preserve_structure": true,
+  "selected_format": "mp3",
+  "category_keywords": {
+    "beats": ["beat", "drum", "kick", "snare", "rhythm"],
+    "bass": ["bass", "sub", "low", "808"],
+    "melodies": ["melody", "lead", "main", "synth"],
+    "vocals": ["vocal", "voice", "rap", "singing"],
+    "fx": ["fx", "effect", "impact", "sweep"],
+    "misc": ["misc", "other", "sound", "audio"]
+  }
+}
