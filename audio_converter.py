@@ -142,27 +142,26 @@ class AudioConverter:
         self.apply_theme()
     
     def apply_theme(self):
-        """Apply a refined dark theme."""
+        """Apply a refined dark theme with no white or light gray."""
         self.style.theme_use('clam')
         
-        # Refined dark theme colors
+        # Define colors, avoiding white/light gray except for text
         self.bg_primary = '#2E2E2E'      # Main dark gray background
         self.bg_secondary = '#3A3A3A'    # Lighter gray for accents
-        self.bg_darkest = '#1E1E1E'      # Darkest gray for text widgets/lists
-        self.accent_color = '#4ecdc4'    # Teal for buttons and highlights
-        self.accent_secondary = '#58D68D' # A shade of green for success/accent
+        self.bg_darkest = '#1E1E1E'      # Darkest gray for text widgets
+        self.accent_color = '#4ecdc4'    # Teal button color
+        self.accent_secondary = '#58D68D' # Green for success
         self.text_color = '#FFFFFF'      # White text
-        self.text_on_accent = '#000000'       # Black text for light backgrounds (buttons)
 
         # Configure main elements
         self.style.configure('TFrame', background=self.bg_primary, borderwidth=0)
         self.style.configure('TLabel', background=self.bg_primary, foreground=self.text_color, font=('SF Pro Display', 11))
-        self.style.configure('TButton', background=self.accent_color, foreground=self.text_on_accent, borderwidth=0, relief='flat', font=('SF Pro Display', 10, 'bold'), padding=(20, 8))
-        self.style.map('TButton', background=[('active', self.accent_secondary), ('pressed', '#3bcdcc')], relief=[('pressed', 'flat')])
+        self.style.configure('TButton', background=self.accent_color, foreground=self.text_color, borderwidth=0, relief='flat', font=('SF Pro Display', 10, 'bold'), padding=(20, 8))
+        self.style.map('TButton', background=[('active', self.accent_secondary)])
 
         self.style.configure('TNotebook', background=self.bg_primary, borderwidth=0)
         self.style.configure('TNotebook.Tab', background=self.bg_secondary, foreground=self.text_color, padding=[20, 12], borderwidth=0, font=('SF Pro Display', 11))
-        self.style.map('TNotebook.Tab', background=[('selected', self.accent_color), ('active', self.bg_secondary)], foreground=[('selected', self.text_on_accent)])
+        self.style.map('TNotebook.Tab', background=[('selected', self.accent_color)], foreground=[('selected', self.text_color)])
 
         self.style.configure('TLabelFrame', background=self.bg_primary, foreground=self.text_color, borderwidth=0, relief='flat')
         self.style.configure('TLabelFrame.Label', background=self.bg_primary, foreground=self.text_color, font=('SF Pro Display', 12, 'bold'))
@@ -172,12 +171,11 @@ class AudioConverter:
 
         self.style.configure('TEntry', fieldbackground=self.bg_darkest, foreground=self.text_color, borderwidth=0, relief='flat', insertcolor=self.text_color, padding=8)
 
-        # Combobox styling
         self.style.configure('TCombobox', fieldbackground=self.bg_darkest, foreground=self.text_color, borderwidth=0, relief='flat', padding=8, arrowcolor=self.accent_color)
         self.root.option_add('*TCombobox*Listbox.background', self.bg_darkest)
         self.root.option_add('*TCombobox*Listbox.foreground', self.text_color)
         self.root.option_add('*TCombobox*Listbox.selectBackground', self.accent_color)
-        self.root.option_add('*TCombobox*Listbox.selectForeground', self.text_on_accent)
+        self.root.option_add('*TCombobox*Listbox.selectForeground', self.text_color)
 
         self.style.configure('TScale', background=self.bg_primary, troughcolor=self.bg_secondary, borderwidth=0, sliderthickness=15)
 
@@ -211,7 +209,7 @@ class AudioConverter:
         self.input_listbox = tk.Listbox(list_frame, height=6,
                                        bg=self.bg_darkest, fg=self.text_color,
                                        selectbackground=self.accent_color,
-                                       selectforeground=self.text_on_accent,
+                                       selectforeground=self.text_color,
                                        font=('SF Pro Display', 10),
                                        borderwidth=0, highlightthickness=0)
         scrollbar = ttk.Scrollbar(list_frame, orient=tk.VERTICAL, command=self.input_listbox.yview)
@@ -228,7 +226,7 @@ class AudioConverter:
         folder_select_frame = ttk.Frame(output_frame)
         folder_select_frame.pack(fill=tk.X, pady=2)
         ttk.Label(folder_select_frame, text="Output Folder:").pack(side=tk.LEFT)
-        self.output_label = ttk.Label(folder_select_frame, text="Not selected", foreground="#F1C40F")
+        self.output_label = ttk.Label(folder_select_frame, text="Not selected", foreground="red")
         self.output_label.pack(side=tk.LEFT, padx=10)
         ttk.Button(folder_select_frame, text="Browse", command=self.select_output_folder).pack(side=tk.RIGHT)
         
@@ -604,18 +602,12 @@ class AudioConverter:
             'category': (self.category_button, self.include_category_in_filename)
         }
         
-        # Refined dark theme colors for filename buttons
-        selected_bg = self.accent_color
-        selected_fg = self.text_on_accent
-        normal_bg = self.bg_secondary
-        normal_fg = self.text_color
-        
         for option, (button, var) in buttons.items():
             button.config(borderwidth=0, highlightthickness=0)
             if var.get():
-                button.config(relief=tk.SUNKEN, bg=selected_bg, fg=selected_fg, font=('Arial', 9, 'bold'))
+                button.config(relief=tk.SUNKEN, bg=self.accent_color, fg=self.text_color, font=('Arial', 9, 'bold'))
             else:
-                button.config(relief=tk.FLAT, bg=normal_bg, fg=normal_fg, font=('Arial', 9))
+                button.config(relief=tk.FLAT, bg=self.bg_secondary, fg=self.text_color, font=('Arial', 9))
     
     def update_filename_preview(self):
         """Update the filename preview based on current selections"""

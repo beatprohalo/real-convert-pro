@@ -27,7 +27,7 @@ class ProfessionalToolsGUI:
         self.apply_theme()
         
     def apply_theme(self):
-        """Apply a refined dark theme."""
+        """Apply a refined dark theme with no white or light gray."""
         style = ttk.Style()
         style.theme_use('clam')
 
@@ -37,17 +37,16 @@ class ProfessionalToolsGUI:
         accent_color = '#4ecdc4'
         accent_secondary = '#58D68D'
         text_color = '#FFFFFF'
-        text_on_accent = '#000000'
 
         style.configure('.', background=bg_primary, foreground=text_color)
         style.configure('TFrame', background=bg_primary)
         style.configure('TLabel', background=bg_primary, foreground=text_color)
-        style.configure('TButton', background=accent_color, foreground=text_on_accent, borderwidth=0, relief='flat')
+        style.configure('TButton', background=accent_color, foreground=text_color, borderwidth=0, relief='flat')
         style.map('TButton', background=[('active', accent_secondary)])
         style.configure('TNotebook', background=bg_primary, borderwidth=0)
         style.configure('TNotebook.Tab', background=bg_secondary, foreground=text_color, borderwidth=0)
-        style.map('TNotebook.Tab', background=[('selected', accent_color)], foreground=[('selected', text_on_accent)])
-        style.configure('TLabelFrame', background=bg_primary, borderwidth=1, relief='solid')
+        style.map('TNotebook.Tab', background=[('selected', accent_color)], foreground=[('selected', text_color)])
+        style.configure('TLabelFrame', background=bg_primary, borderwidth=0, relief='flat')
         style.configure('TLabelFrame.Label', background=bg_primary, foreground=text_color)
         style.configure('TCheckbutton', background=bg_primary, foreground=text_color, indicatorcolor=bg_secondary)
         style.map('TCheckbutton', indicatorcolor=[('selected', accent_color)])
@@ -56,7 +55,7 @@ class ProfessionalToolsGUI:
         self.root.option_add('*TCombobox*Listbox.background', bg_darkest)
         self.root.option_add('*TCombobox*Listbox.foreground', text_color)
         self.root.option_add('*TCombobox*Listbox.selectBackground', accent_color)
-        self.root.option_add('*TCombobox*Listbox.selectForeground', text_on_accent)
+        self.root.option_add('*TCombobox*Listbox.selectForeground', text_color)
         style.configure('TScale', background=bg_primary, troughcolor=bg_secondary)
         style.configure('TProgressbar', background=accent_secondary, troughcolor=bg_secondary, borderwidth=0)
 
@@ -74,7 +73,7 @@ class ProfessionalToolsGUI:
         file_frame.pack(fill=tk.X, padx=10, pady=5)
         
         ttk.Label(file_frame, text="Input Audio File:").pack(side=tk.LEFT)
-        self.file_label = ttk.Label(file_frame, text="No file selected", foreground="gray")
+        self.file_label = ttk.Label(file_frame, text="No file selected")
         self.file_label.pack(side=tk.LEFT, padx=10)
         
         ttk.Button(file_frame, text="Browse", command=self.browse_file).pack(side=tk.RIGHT)
@@ -674,7 +673,7 @@ ITU BS1770: -23 LUFS, -1 dBTP (International)"""
         
         if filename:
             self.input_file = filename
-            self.file_label.config(text=Path(filename).name, foreground="black")
+            self.file_label.config(text=Path(filename).name, foreground="#FFFFFF")
             self.log(f"Selected: {Path(filename).name}")
     
     def check_input_file(self):
