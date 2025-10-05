@@ -157,6 +157,7 @@ class AudioConverter:
         success_green = '#2ecc71'   # Green for progress/success
         
         # Configure main elements with ML Bank dark theme
+        self.style.configure('.', background=bg_primary, foreground=text_white)
         self.style.configure('TFrame', 
                            background=bg_primary, 
                            borderwidth=0)
@@ -213,20 +214,28 @@ class AudioConverter:
                            font=('SF Pro Display', 10))
         
         self.style.configure('TEntry', 
-                           background=text_white,
-                           foreground=text_dark,
+                           background=bg_accent,
+                           foreground=text_white,
+                           fieldbackground=bg_accent,
                            borderwidth=1,
                            relief='flat',
-                           insertcolor=text_dark,
+                           insertcolor=text_white,
                            padding=8)
         
         self.style.configure('TCombobox', 
-                           background=text_white,
-                           foreground=text_dark,
+                           background=bg_accent,
+                           foreground=text_white,
+                           fieldbackground=bg_accent,
                            borderwidth=1,
                            relief='flat',
                            padding=8)
         
+        self.style.map('TCombobox',
+                     fieldbackground=[('readonly', bg_accent)],
+                     foreground=[('readonly', text_white)],
+                     selectbackground=[('readonly', bg_accent)],
+                     selectforeground=[('readonly', text_white)])
+
         self.style.configure('TScale', 
                            background=bg_primary,
                            troughcolor=bg_accent,

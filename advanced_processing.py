@@ -359,18 +359,25 @@ class MemoryOptimizer:
             # Process chunk
             result_chunk = process_func(chunk)
             
-            # Handle overlap removal
-            if overlap > 0 and i > 0:
-                result_chunk = result_chunk[overlap//2:]
-            if overlap > 0 and end_idx < len(audio):
-                result_chunk = result_chunk[:-overlap//2]
+            # Handle overlap removal for array results
+            if not np.isscalar(result_chunk):
+                if overlap > 0 and i > 0:
+                    result_chunk = result_chunk[overlap//2:]
+                if overlap > 0 and end_idx < len(audio):
+                    result_chunk = result_chunk[:-overlap//2]
             
             results.append(result_chunk)
             
             # Force garbage collection after each chunk
             gc.collect()
         
-        return np.concatenate(results) if results else np.array([])
+        if not results:
+            return np.array([])
+
+        if np.isscalar(results[0]):
+            return np.mean(results)
+        else:
+            return np.concatenate(results)
     
     def smart_batch_size(self, file_sizes: List[int], target_memory_mb: float = 1024) -> int:
         """Calculate optimal batch size based on file sizes and memory"""

@@ -210,7 +210,7 @@ def test_memory_optimization():
     memory_opt.cleanup_memory()
     
     final_memory = memory_opt.get_memory_usage()
-    print(f"Memory after cleanup: {final_memory['rms_mb']:.1f}MB")
+    print(f"Memory after cleanup: {final_memory['rss_mb']:.1f}MB")
     
     # Test chunk processing
     print("\nTesting chunk processing...")
