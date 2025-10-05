@@ -23,8 +23,47 @@ class ProfessionalToolsGUI:
         self.output_dir = Path("gui_outputs")
         self.output_dir.mkdir(exist_ok=True)
         
+        self.setup_theme()
         self.setup_ui()
         
+    def setup_theme(self):
+        """Apply a dark, professional theme consistent with the main app."""
+        self.style = ttk.Style()
+        self.style.theme_use('clam')
+
+        # Dark theme colors
+        bg_primary = '#1a1b2e'
+        bg_secondary = '#16213e'
+        bg_accent = '#0f3460'
+        teal_primary = '#4ecdc4'
+        text_white = '#ffffff'
+        success_green = '#2ecc71'
+
+        # Configure styles
+        self.style.configure('.', background=bg_primary, foreground=text_white, font=('SF Pro Display', 10))
+        self.style.configure('TFrame', background=bg_primary)
+        self.style.configure('TLabel', background=bg_primary, foreground=text_white)
+        self.style.configure('TButton', background=teal_primary, foreground=text_white, borderwidth=0, relief='flat', padding=(10, 5))
+        self.style.map('TButton', background=[('active', '#44d9e8')])
+        self.style.configure('TNotebook', background=bg_primary, borderwidth=0)
+        self.style.configure('TNotebook.Tab', background=bg_secondary, foreground=text_white, padding=[10, 5], borderwidth=0)
+        self.style.map('TNotebook.Tab', background=[('selected', teal_primary)], foreground=[('selected', text_white)])
+        self.style.configure('TLabelFrame', background=bg_primary, foreground=text_white)
+        self.style.configure('TLabelFrame.Label', background=bg_primary, foreground=text_white, font=('SF Pro Display', 11, 'bold'))
+        self.style.configure('TCheckbutton', background=bg_primary, foreground=text_white)
+        self.style.configure('TEntry', fieldbackground=bg_accent, foreground=text_white, borderwidth=1, relief='flat', insertcolor=text_white)
+        self.style.configure('TCombobox', fieldbackground=bg_accent, foreground=text_white, borderwidth=1, relief='flat')
+        self.style.map('TCombobox',
+                     fieldbackground=[('readonly', bg_accent)],
+                     foreground=[('readonly', text_white)],
+                     selectbackground=[('readonly', bg_accent)],
+                     selectforeground=[('readonly', text_white)])
+        self.style.configure('TScale', background=bg_primary, troughcolor=bg_accent)
+        self.style.configure('Horizontal.TProgressbar', background=success_green, troughcolor=bg_secondary)
+
+        # Root window
+        self.root.configure(bg=bg_primary)
+
     def setup_ui(self):
         """Create the user interface"""
         # Main notebook for tabs
@@ -36,7 +75,7 @@ class ProfessionalToolsGUI:
         file_frame.pack(fill=tk.X, padx=10, pady=5)
         
         ttk.Label(file_frame, text="Input Audio File:").pack(side=tk.LEFT)
-        self.file_label = ttk.Label(file_frame, text="No file selected", foreground="gray")
+        self.file_label = ttk.Label(file_frame, text="No file selected", foreground="white")
         self.file_label.pack(side=tk.LEFT, padx=10)
         
         ttk.Button(file_frame, text="Browse", command=self.browse_file).pack(side=tk.RIGHT)
@@ -57,7 +96,7 @@ class ProfessionalToolsGUI:
         log_frame = ttk.LabelFrame(self.root, text="Processing Log")
         log_frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=5)
         
-        self.log_text = scrolledtext.ScrolledText(log_frame, height=8)
+        self.log_text = scrolledtext.ScrolledText(log_frame, height=8, bg='#16213e', fg='#ffffff', insertbackground='#ffffff')
         self.log_text.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
         
         # Progress bar

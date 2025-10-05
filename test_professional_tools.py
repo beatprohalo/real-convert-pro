@@ -8,8 +8,19 @@ audio repair, spectral editing, stereo manipulation, and mastering.
 import os
 import sys
 import numpy as np
+import pytest
 from pathlib import Path
 from audio_analyzer import ProfessionalAudioProcessor, AudioProcessingResult
+
+@pytest.fixture(scope="module")
+def processor():
+    """Fixture for the ProfessionalAudioProcessor."""
+    return ProfessionalAudioProcessor()
+
+@pytest.fixture(scope="module")
+def test_file():
+    """Fixture to create and provide the test audio file."""
+    return create_test_audio()
 
 def create_test_audio():
     """Create test audio files for demonstration"""
