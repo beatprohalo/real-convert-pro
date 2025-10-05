@@ -229,9 +229,10 @@ def test_memory_optimization():
     # Compare with direct processing
     direct_result = simple_rms(large_signal)
     
-    print(f"Chunk processing result: {chunk_result:.6f}")
+    chunk_rms_mean = np.mean(chunk_result)
+    print(f"Chunk processing result (mean of chunks): {chunk_rms_mean:.6f}")
     print(f"Direct processing result: {direct_result:.6f}")
-    print(f"Difference: {abs(chunk_result - direct_result):.6f}")
+    print(f"Difference: {abs(chunk_rms_mean - direct_result):.6f}")
 
 def test_audio_analysis_advanced():
     """Test advanced audio analysis capabilities"""

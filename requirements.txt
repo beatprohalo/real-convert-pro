@@ -21,7 +21,7 @@ resampy>=0.4.0
 numba>=0.56.0
 essentia>=2.1b6.dev374  # For comprehensive audio analysis
 pyloudnorm>=0.1.0       # For LUFS loudness metering
-pyacoustid>=1.1.5       # For audio fingerprinting (uses Chromaprint)
+pyacoustid>=1.1.5       # For audio fingerprinting
 music21>=8.1.0          # For advanced music theory analysis
 scikit-learn>=1.0.0     # For machine learning-based analysis
 

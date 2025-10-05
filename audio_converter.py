@@ -142,122 +142,51 @@ class AudioConverter:
         self.apply_theme()
     
     def apply_theme(self):
-        """Apply ML Bank inspired dark theme with teal and purple accents"""
+        """Apply a refined dark theme."""
         self.style.theme_use('clam')
         
-        # ML Bank inspired dark theme colors - NO LIGHT GRAY
-        bg_primary = '#1a1b2e'      # Deep navy blue (main background)
-        bg_secondary = '#16213e'    # Darker navy blue
-        bg_accent = '#0f3460'       # Medium dark blue for elements
-        teal_primary = '#4ecdc4'    # Bright teal (like ML Bank logo)
-        teal_secondary = '#44d9e8'  # Lighter teal
-        purple_accent = '#9b59b6'   # Purple gradient accent
-        text_white = '#ffffff'      # Clean white text
-        text_dark = '#1a1b2e'       # Dark navy for contrast
-        success_green = '#2ecc71'   # Green for progress/success
-        
-        # Configure main elements with ML Bank dark theme
-        self.style.configure('.', background=bg_primary, foreground=text_white)
-        self.style.configure('TFrame', 
-                           background=bg_primary, 
-                           borderwidth=0)
-        
-        self.style.configure('TLabel', 
-                           background=bg_primary, 
-                           foreground=text_white,
-                           font=('SF Pro Display', 11))
-        
-        self.style.configure('TButton', 
-                           background=teal_primary,
-                           foreground=text_white,
-                           borderwidth=0,
-                           relief='flat',
-                           font=('SF Pro Display', 10, 'bold'),
-                           padding=(20, 8))
-        
-        self.style.map('TButton',
-                     background=[('active', teal_secondary),
-                               ('pressed', '#3bcdcc')],
-                     relief=[('pressed', 'flat')])
-        
-        self.style.configure('TNotebook', 
-                           background=bg_primary,
-                           borderwidth=0)
-        
-        self.style.configure('TNotebook.Tab', 
-                           background=bg_secondary,
-                           foreground=text_white,
-                           padding=[20, 12],
-                           borderwidth=0,
-                           font=('SF Pro Display', 11))
-        
-        self.style.map('TNotebook.Tab',
-                     background=[('selected', teal_primary),
-                               ('active', bg_accent)],
-                     foreground=[('selected', text_white)])
-        
-        self.style.configure('TLabelFrame', 
-                           background=bg_primary,
-                           foreground=text_white,
-                           borderwidth=0,
-                           relief='flat')
-        
-        self.style.configure('TLabelFrame.Label', 
-                           background=bg_primary,
-                           foreground=text_white,
-                           font=('SF Pro Display', 12, 'bold'))
-        
-        self.style.configure('TCheckbutton', 
-                           background=bg_primary,
-                           foreground=text_white,
-                           focuscolor='none',
-                           font=('SF Pro Display', 10))
-        
-        self.style.configure('TEntry', 
-                           background=bg_accent,
-                           foreground=text_white,
-                           fieldbackground=bg_accent,
-                           borderwidth=1,
-                           relief='flat',
-                           insertcolor=text_white,
-                           padding=8)
-        
-        self.style.configure('TCombobox', 
-                           background=bg_accent,
-                           foreground=text_white,
-                           fieldbackground=bg_accent,
-                           borderwidth=1,
-                           relief='flat',
-                           padding=8)
-        
-        self.style.map('TCombobox',
-                     fieldbackground=[('readonly', bg_accent)],
-                     foreground=[('readonly', text_white)],
-                     selectbackground=[('readonly', bg_accent)],
-                     selectforeground=[('readonly', text_white)])
+        # Refined dark theme colors
+        self.bg_primary = '#2E2E2E'      # Main dark gray background
+        self.bg_secondary = '#3A3A3A'    # Lighter gray for accents
+        self.bg_darkest = '#1E1E1E'      # Darkest gray for text widgets/lists
+        self.accent_color = '#4ecdc4'    # Teal for buttons and highlights
+        self.accent_secondary = '#58D68D' # A shade of green for success/accent
+        self.text_color = '#FFFFFF'      # White text
+        self.text_on_accent = '#000000'       # Black text for light backgrounds (buttons)
 
-        self.style.configure('TScale', 
-                           background=bg_primary,
-                           troughcolor=bg_accent,
-                           borderwidth=0,
-                           sliderthickness=15)
-        
-        self.style.configure('Horizontal.TScrollbar',
-                           background=bg_accent,
-                           troughcolor=bg_primary,
-                           borderwidth=0,
-                           arrowcolor=text_white)
-        
-        # Configure root window with beautiful purple gradient
-        self.root.configure(bg=bg_primary)
-        
-        # Configure beautiful progress bar to match theme
-        self.style.configure('TProgressbar', 
-                           background=success_green,
-                           troughcolor=bg_accent,
-                           borderwidth=0,
-                           lightcolor=success_green,
-                           darkcolor=success_green)
+        # Configure main elements
+        self.style.configure('TFrame', background=self.bg_primary, borderwidth=0)
+        self.style.configure('TLabel', background=self.bg_primary, foreground=self.text_color, font=('SF Pro Display', 11))
+        self.style.configure('TButton', background=self.accent_color, foreground=self.text_on_accent, borderwidth=0, relief='flat', font=('SF Pro Display', 10, 'bold'), padding=(20, 8))
+        self.style.map('TButton', background=[('active', self.accent_secondary), ('pressed', '#3bcdcc')], relief=[('pressed', 'flat')])
+
+        self.style.configure('TNotebook', background=self.bg_primary, borderwidth=0)
+        self.style.configure('TNotebook.Tab', background=self.bg_secondary, foreground=self.text_color, padding=[20, 12], borderwidth=0, font=('SF Pro Display', 11))
+        self.style.map('TNotebook.Tab', background=[('selected', self.accent_color), ('active', self.bg_secondary)], foreground=[('selected', self.text_on_accent)])
+
+        self.style.configure('TLabelFrame', background=self.bg_primary, foreground=self.text_color, borderwidth=0, relief='flat')
+        self.style.configure('TLabelFrame.Label', background=self.bg_primary, foreground=self.text_color, font=('SF Pro Display', 12, 'bold'))
+
+        self.style.configure('TCheckbutton', background=self.bg_primary, foreground=self.text_color, indicatorcolor=self.bg_secondary, font=('SF Pro Display', 10))
+        self.style.map('TCheckbutton', indicatorcolor=[('selected', self.accent_color)])
+
+        self.style.configure('TEntry', fieldbackground=self.bg_darkest, foreground=self.text_color, borderwidth=0, relief='flat', insertcolor=self.text_color, padding=8)
+
+        # Combobox styling
+        self.style.configure('TCombobox', fieldbackground=self.bg_darkest, foreground=self.text_color, borderwidth=0, relief='flat', padding=8, arrowcolor=self.accent_color)
+        self.root.option_add('*TCombobox*Listbox.background', self.bg_darkest)
+        self.root.option_add('*TCombobox*Listbox.foreground', self.text_color)
+        self.root.option_add('*TCombobox*Listbox.selectBackground', self.accent_color)
+        self.root.option_add('*TCombobox*Listbox.selectForeground', self.text_on_accent)
+
+        self.style.configure('TScale', background=self.bg_primary, troughcolor=self.bg_secondary, borderwidth=0, sliderthickness=15)
+
+        self.style.configure('Horizontal.TScrollbar', background=self.bg_secondary, troughcolor=self.bg_primary, borderwidth=0, arrowcolor=self.text_color)
+        self.style.configure('Vertical.TScrollbar', background=self.bg_secondary, troughcolor=self.bg_primary, borderwidth=0, arrowcolor=self.text_color)
+
+        self.root.configure(bg=self.bg_primary)
+
+        self.style.configure('TProgressbar', background=self.accent_secondary, troughcolor=self.bg_secondary, borderwidth=0)
         
     def setup_main_tab(self, notebook):
         """Setup main conversion interface"""
@@ -280,10 +209,11 @@ class AudioConverter:
         list_frame.pack(fill=tk.BOTH, expand=True, pady=5)
         
         self.input_listbox = tk.Listbox(list_frame, height=6,
-                                       bg='#16213e', fg='#ffffff',
-                                       selectbackground='#4ecdc4',
-                                       selectforeground='#1a1b2e',
-                                       font=('SF Pro Display', 10))
+                                       bg=self.bg_darkest, fg=self.text_color,
+                                       selectbackground=self.accent_color,
+                                       selectforeground=self.text_on_accent,
+                                       font=('SF Pro Display', 10),
+                                       borderwidth=0, highlightthickness=0)
         scrollbar = ttk.Scrollbar(list_frame, orient=tk.VERTICAL, command=self.input_listbox.yview)
         self.input_listbox.configure(yscrollcommand=scrollbar.set)
         
@@ -298,7 +228,7 @@ class AudioConverter:
         folder_select_frame = ttk.Frame(output_frame)
         folder_select_frame.pack(fill=tk.X, pady=2)
         ttk.Label(folder_select_frame, text="Output Folder:").pack(side=tk.LEFT)
-        self.output_label = ttk.Label(folder_select_frame, text="Not selected", foreground="red")
+        self.output_label = ttk.Label(folder_select_frame, text="Not selected", foreground="#F1C40F")
         self.output_label.pack(side=tk.LEFT, padx=10)
         ttk.Button(folder_select_frame, text="Browse", command=self.select_output_folder).pack(side=tk.RIGHT)
         
@@ -446,9 +376,10 @@ class AudioConverter:
         
         # Categories list
         self.categories_text = scrolledtext.ScrolledText(cat_frame, height=20, width=80,
-                                                        bg='#16213e', fg='#ffffff',
+                                                        bg=self.bg_darkest, fg=self.text_color,
                                                         font=('SF Pro Display', 10),
-                                                        insertbackground='#4ecdc4')
+                                                        insertbackground=self.accent_color,
+                                                        borderwidth=0, highlightthickness=0)
         self.categories_text.pack(fill=tk.BOTH, expand=True, padx=10, pady=5)
         
         # Load current categories
@@ -632,8 +563,8 @@ class AudioConverter:
         
         ttk.Label(preview_frame, text="Filename Preview:", font=("Arial", 9)).pack(anchor=tk.W)
         self.filename_preview = tk.Label(preview_frame, text="example_track-C_Major-energetic-high.wav", 
-                                        font=("Arial", 9, "italic"), fg="blue", anchor=tk.W,
-                                        wraplength=600)
+                                        font=("Arial", 9, "italic"), fg=self.accent_color, anchor=tk.W,
+                                        wraplength=600, bg=self.bg_primary)
         self.filename_preview.pack(anchor=tk.W, fill=tk.X)
         
         # Initialize button states
@@ -673,21 +604,18 @@ class AudioConverter:
             'category': (self.category_button, self.include_category_in_filename)
         }
         
-        # ML Bank theme colors for filename buttons
-        selected_bg = '#4ecdc4'     # Teal for selected (like ML Bank)
-        selected_fg = '#1a1b2e'     # Dark navy text
-        normal_bg = '#9b59b6'       # Purple for normal
-        normal_fg = '#ffffff'       # White text
+        # Refined dark theme colors for filename buttons
+        selected_bg = self.accent_color
+        selected_fg = self.text_on_accent
+        normal_bg = self.bg_secondary
+        normal_fg = self.text_color
         
         for option, (button, var) in buttons.items():
+            button.config(borderwidth=0, highlightthickness=0)
             if var.get():
-                button.config(relief=tk.RAISED, bg=selected_bg, fg=selected_fg,
-                            borderwidth=2, highlightthickness=0,
-                            font=('Arial', 9, 'bold'))
+                button.config(relief=tk.SUNKEN, bg=selected_bg, fg=selected_fg, font=('Arial', 9, 'bold'))
             else:
-                button.config(relief=tk.RAISED, bg=normal_bg, fg=normal_fg,
-                            borderwidth=1, highlightthickness=0,
-                            font=('Arial', 9))
+                button.config(relief=tk.FLAT, bg=normal_bg, fg=normal_fg, font=('Arial', 9))
     
     def update_filename_preview(self):
         """Update the filename preview based on current selections"""
@@ -721,9 +649,10 @@ class AudioConverter:
                  font=("Arial", 12, "bold")).pack(pady=10)
         
         self.log_text = scrolledtext.ScrolledText(progress_frame, height=25, width=100,
-                                                bg='#16213e', fg='#ffffff', 
+                                                bg=self.bg_darkest, fg=self.text_color,
                                                 font=('SF Pro Display', 10),
-                                                insertbackground='#4ecdc4')
+                                                insertbackground=self.accent_color,
+                                                borderwidth=0, highlightthickness=0)
         self.log_text.pack(fill=tk.BOTH, expand=True, padx=10, pady=5)
         
         # Clear log button
@@ -950,7 +879,7 @@ class AudioConverter:
         folder = filedialog.askdirectory(title="Select output folder")
         if folder:
             self.output_folder = folder
-            self.output_label.config(text=folder, foreground="green")
+            self.output_label.config(text=folder, foreground=self.accent_secondary)
             
     def get_audio_files(self) -> List[str]:
         """Get all audio files from selected folders and files"""

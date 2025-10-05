@@ -344,40 +344,43 @@ class MemoryOptimizer:
             print(f"Memory mapping failed for {file_path}: {e}")
             return None
     
-    def chunk_audio_processing(self, audio: np.ndarray, chunk_size: int, 
+    def chunk_audio_processing(self, audio: np.ndarray, chunk_size: int,
                               process_func: Callable, overlap: int = 0) -> np.ndarray:
         """Process audio in chunks to manage memory usage"""
         if len(audio) <= chunk_size:
-            return process_func(audio)
-        
+            result = process_func(audio)
+            if np.isscalar(result):
+                return np.array([result])
+            return result
+
         results = []
-        
+
         for i in range(0, len(audio), chunk_size - overlap):
             end_idx = min(i + chunk_size, len(audio))
             chunk = audio[i:end_idx]
-            
+
             # Process chunk
             result_chunk = process_func(chunk)
-            
+
             # Handle overlap removal for array results
-            if not np.isscalar(result_chunk):
-                if overlap > 0 and i > 0:
+            if overlap > 0 and isinstance(result_chunk, np.ndarray) and result_chunk.ndim > 0:
+                if i > 0:
                     result_chunk = result_chunk[overlap//2:]
-                if overlap > 0 and end_idx < len(audio):
+                if end_idx < len(audio):
                     result_chunk = result_chunk[:-overlap//2]
-            
+
             results.append(result_chunk)
-            
+
             # Force garbage collection after each chunk
             gc.collect()
-        
+
         if not results:
             return np.array([])
 
         if np.isscalar(results[0]):
-            return np.mean(results)
-        else:
-            return np.concatenate(results)
+            return np.array(results)
+
+        return np.concatenate(results)
     
     def smart_batch_size(self, file_sizes: List[int], target_memory_mb: float = 1024) -> int:
         """Calculate optimal batch size based on file sizes and memory"""
