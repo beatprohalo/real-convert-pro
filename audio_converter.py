@@ -1091,42 +1091,64 @@ class AudioConverter:
         # Create two rows of toggles
         toggle_frame = ttk.Frame(filename_frame)
         toggle_frame.pack(fill=tk.X)
-        
+
         # Top row
         top_row = ttk.Frame(toggle_frame)
         top_row.pack(fill=tk.X, pady=2)
-        
+
+        toggle_kwargs = dict(
+            width=10,
+            relief=tk.FLAT,
+            bd=0,
+            highlightthickness=0,
+            highlightbackground=self._theme_colors['bg_secondary'],
+            highlightcolor=self._theme_colors['bg_secondary'],
+            bg=self._theme_colors['bg_secondary'],
+            fg=self._theme_colors['text_subtle'],
+            activebackground=self._theme_colors['button_hover'],
+            activeforeground=self._theme_colors['text_primary'],
+            font=('SF Pro Display', 10),
+            pady=6
+        )
+
         # Create clickable toggle buttons that look highlighted when selected
-        self.key_button = tk.Button(top_row, text="Key", width=8, relief=tk.RAISED,
-                                   command=lambda: self.toggle_filename_option('key'))
+        self.key_button = tk.Button(top_row, text="Key",
+                                   command=lambda: self.toggle_filename_option('key'),
+                                   **toggle_kwargs)
         self.key_button.pack(side=tk.LEFT, padx=5)
-        
-        self.mood_button = tk.Button(top_row, text="Mood", width=8, relief=tk.RAISED,
-                                    command=lambda: self.toggle_filename_option('mood'))
+
+        self.mood_button = tk.Button(top_row, text="Mood",
+                                    command=lambda: self.toggle_filename_option('mood'),
+                                    **toggle_kwargs)
         self.mood_button.pack(side=tk.LEFT, padx=5)
-        
-        self.energy_button = tk.Button(top_row, text="Energy", width=8, relief=tk.RAISED,
-                                      command=lambda: self.toggle_filename_option('energy'))
+
+        self.energy_button = tk.Button(top_row, text="Energy",
+                                      command=lambda: self.toggle_filename_option('energy'),
+                                      **toggle_kwargs)
         self.energy_button.pack(side=tk.LEFT, padx=5)
-        
-        self.bpm_button = tk.Button(top_row, text="BPM", width=8, relief=tk.RAISED,
-                                   command=lambda: self.toggle_filename_option('bpm'))
+
+        self.bpm_button = tk.Button(top_row, text="BPM",
+                                   command=lambda: self.toggle_filename_option('bpm'),
+                                   **toggle_kwargs)
         self.bpm_button.pack(side=tk.LEFT, padx=5)
-        
+
         # Bottom row
         bottom_row = ttk.Frame(toggle_frame)
         bottom_row.pack(fill=tk.X, pady=2)
-        
-        self.genre_button = tk.Button(bottom_row, text="Genre", width=8, relief=tk.RAISED,
-                                     command=lambda: self.toggle_filename_option('genre'))
+
+        self.genre_button = tk.Button(bottom_row, text="Genre",
+                                     command=lambda: self.toggle_filename_option('genre'),
+                                     **toggle_kwargs)
         self.genre_button.pack(side=tk.LEFT, padx=5)
-        
-        self.lufs_button = tk.Button(bottom_row, text="LUFS", width=8, relief=tk.RAISED,
-                                    command=lambda: self.toggle_filename_option('lufs'))
+
+        self.lufs_button = tk.Button(bottom_row, text="LUFS",
+                                    command=lambda: self.toggle_filename_option('lufs'),
+                                    **toggle_kwargs)
         self.lufs_button.pack(side=tk.LEFT, padx=5)
-        
-        self.category_button = tk.Button(bottom_row, text="Category", width=8, relief=tk.RAISED,
-                                        command=lambda: self.toggle_filename_option('category'))
+
+        self.category_button = tk.Button(bottom_row, text="Category",
+                                        command=lambda: self.toggle_filename_option('category'),
+                                        **toggle_kwargs)
         self.category_button.pack(side=tk.LEFT, padx=5)
         
         # Preview area
@@ -1134,8 +1156,9 @@ class AudioConverter:
         preview_frame.pack(fill=tk.X, pady=(10, 0))
         
         ttk.Label(preview_frame, text="Filename Preview:", font=("Arial", 9)).pack(anchor=tk.W)
-        self.filename_preview = tk.Label(preview_frame, text="example_track-C_Major-energetic-high.wav", 
-                                        font=("Arial", 9, "italic"), fg="blue", anchor=tk.W,
+        self.filename_preview = tk.Label(preview_frame, text="example_track-C_Major-energetic-high.wav",
+                                        font=("Arial", 9, "italic"),
+                                        fg=self._theme_colors['text_subtle'], anchor=tk.W,
                                         wraplength=600)
         self.filename_preview.pack(anchor=tk.W, fill=tk.X)
         
@@ -1183,13 +1206,31 @@ class AudioConverter:
         
         for option, (button, var) in buttons.items():
             if var.get():
-                button.config(relief=tk.RAISED, bg=selected_bg, fg=selected_fg,
-                            borderwidth=2, highlightthickness=0,
-                            font=('Arial', 9, 'bold'))
+                button.config(
+                    bg=selected_bg,
+                    fg=selected_fg,
+                    activebackground=selected_active,
+                    activeforeground=selected_fg,
+                    relief=tk.FLAT,
+                    bd=0,
+                    highlightthickness=0,
+                    highlightbackground=selected_bg,
+                    highlightcolor=selected_bg,
+                    font=('SF Pro Display', 10, 'bold')
+                )
             else:
-                button.config(relief=tk.RAISED, bg=normal_bg, fg=normal_fg,
-                            borderwidth=1, highlightthickness=0,
-                            font=('Arial', 9))
+                button.config(
+                    bg=normal_bg,
+                    fg=normal_fg,
+                    activebackground=normal_active,
+                    activeforeground=selected_fg,
+                    relief=tk.FLAT,
+                    bd=0,
+                    highlightthickness=0,
+                    highlightbackground=normal_bg,
+                    highlightcolor=normal_bg,
+                    font=('SF Pro Display', 10)
+                )
     
     def update_filename_preview(self):
         """Update the filename preview based on current selections"""
