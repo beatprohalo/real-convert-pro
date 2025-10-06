@@ -463,9 +463,8 @@ class AudioConverter:
                 bg=self._theme_colors['bg_secondary'],
                 fg=self._theme_colors['text_primary'],
                 insertbackground=self._theme_colors['text_primary'],
-                highlightthickness=0,
-                highlightcolor=self._theme_colors['bg_secondary'],
-                highlightbackground=self._theme_colors['bg_secondary'],
+                highlightthickness=1,
+                highlightcolor=self._theme_colors['bg_accent'],
                 relief=tk.FLAT
             )
             entry.grid(row=row, column=1, sticky=tk.EW, padx=5, pady=4)
@@ -1202,11 +1201,9 @@ class AudioConverter:
         
         selected_bg = self._theme_colors['button_primary']
         selected_fg = self._theme_colors['text_primary']
-        selected_active = self._theme_colors['button_hover']
         normal_bg = self._theme_colors['bg_secondary']
         normal_fg = self._theme_colors['text_subtle']
-        normal_active = self._theme_colors['bg_accent']
-
+        
         for option, (button, var) in buttons.items():
             if var.get():
                 button.config(
