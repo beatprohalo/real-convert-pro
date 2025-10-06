@@ -32,37 +32,61 @@ class ProfessionalToolsGUI:
         self.style.theme_use('clam')
 
         # Dark theme colors
-        bg_primary = '#1a1b2e'
-        bg_secondary = '#16213e'
-        bg_accent = '#0f3460'
-        teal_primary = '#4ecdc4'
-        text_white = '#ffffff'
-        success_green = '#2ecc71'
+        bg_primary = '#0b0f16'
+        bg_secondary = '#111826'
+        bg_accent = '#1a2535'
+        button_primary = '#273445'
+        button_hover = '#324156'
+        button_pressed = '#212b3a'
+        text_primary = '#c3cad9'
+        text_subtle = '#9aa7bc'
+        progress_fill = '#3a5246'
 
         # Configure styles
-        self.style.configure('.', background=bg_primary, foreground=text_white, font=('SF Pro Display', 10))
+        self.style.configure('.', background=bg_primary, foreground=text_primary, font=('SF Pro Display', 10))
         self.style.configure('TFrame', background=bg_primary)
-        self.style.configure('TLabel', background=bg_primary, foreground=text_white)
-        self.style.configure('TButton', background=teal_primary, foreground=text_white, borderwidth=0, relief='flat', padding=(10, 5))
-        self.style.map('TButton', background=[('active', '#44d9e8')])
+        self.style.configure('TLabel', background=bg_primary, foreground=text_primary)
+
+        for button_style in ('TButton', 'Accent.TButton'):
+            self.style.configure(button_style,
+                                 background=button_primary,
+                                 foreground=text_primary,
+                                 borderwidth=0,
+                                 relief='flat',
+                                 padding=(10, 5))
+            self.style.map(button_style,
+                           background=[('active', button_hover),
+                                       ('pressed', button_pressed)])
+
         self.style.configure('TNotebook', background=bg_primary, borderwidth=0)
-        self.style.configure('TNotebook.Tab', background=bg_secondary, foreground=text_white, padding=[10, 5], borderwidth=0)
-        self.style.map('TNotebook.Tab', background=[('selected', teal_primary)], foreground=[('selected', text_white)])
-        self.style.configure('TLabelFrame', background=bg_primary, foreground=text_white)
-        self.style.configure('TLabelFrame.Label', background=bg_primary, foreground=text_white, font=('SF Pro Display', 11, 'bold'))
-        self.style.configure('TCheckbutton', background=bg_primary, foreground=text_white)
-        self.style.configure('TEntry', fieldbackground=bg_accent, foreground=text_white, borderwidth=1, relief='flat', insertcolor=text_white)
-        self.style.configure('TCombobox', fieldbackground=bg_accent, foreground=text_white, borderwidth=1, relief='flat')
+        self.style.configure('TNotebook.Tab', background=bg_secondary, foreground=text_primary, padding=[10, 5], borderwidth=0)
+        self.style.map('TNotebook.Tab', background=[('selected', button_primary)], foreground=[('selected', text_primary)])
+        self.style.configure('TLabelFrame', background=bg_primary, foreground=text_primary)
+        self.style.configure('TLabelFrame.Label', background=bg_primary, foreground=text_primary, font=('SF Pro Display', 11, 'bold'))
+        self.style.configure('TCheckbutton', background=bg_primary, foreground=text_primary)
+        entry_kwargs = dict(fieldbackground=bg_accent,
+                            foreground=text_primary,
+                            borderwidth=1,
+                            relief='flat',
+                            insertcolor=text_primary)
+        self.style.configure('TEntry', **entry_kwargs)
+        self.style.configure('TCombobox', **entry_kwargs)
         self.style.map('TCombobox',
                      fieldbackground=[('readonly', bg_accent)],
-                     foreground=[('readonly', text_white)],
+                     foreground=[('readonly', text_primary)],
                      selectbackground=[('readonly', bg_accent)],
-                     selectforeground=[('readonly', text_white)])
+                     selectforeground=[('readonly', text_primary)])
         self.style.configure('TScale', background=bg_primary, troughcolor=bg_accent)
-        self.style.configure('Horizontal.TProgressbar', background=success_green, troughcolor=bg_secondary)
+        self.style.configure('Horizontal.TProgressbar', background=progress_fill, troughcolor=bg_secondary)
 
         # Root window
         self.root.configure(bg=bg_primary)
+        self.theme_colors = {
+            'bg_primary': bg_primary,
+            'bg_secondary': bg_secondary,
+            'text_primary': text_primary,
+            'text_subtle': text_subtle
+        }
 
     def setup_ui(self):
         """Create the user interface"""
@@ -75,7 +99,7 @@ class ProfessionalToolsGUI:
         file_frame.pack(fill=tk.X, padx=10, pady=5)
         
         ttk.Label(file_frame, text="Input Audio File:").pack(side=tk.LEFT)
-        self.file_label = ttk.Label(file_frame, text="No file selected", foreground="white")
+        self.file_label = ttk.Label(file_frame, text="No file selected", foreground=self.theme_colors['text_subtle'])
         self.file_label.pack(side=tk.LEFT, padx=10)
         
         ttk.Button(file_frame, text="Browse", command=self.browse_file).pack(side=tk.RIGHT)
@@ -96,7 +120,15 @@ class ProfessionalToolsGUI:
         log_frame = ttk.LabelFrame(self.root, text="Processing Log")
         log_frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=5)
         
-        self.log_text = scrolledtext.ScrolledText(log_frame, height=8, bg='#16213e', fg='#ffffff', insertbackground='#ffffff')
+        self.log_text = scrolledtext.ScrolledText(
+            log_frame,
+            height=8,
+            bg=self.theme_colors['bg_secondary'],
+            fg=self.theme_colors['text_primary'],
+            insertbackground=self.theme_colors['text_primary'],
+            borderwidth=0,
+            highlightthickness=0
+        )
         self.log_text.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
         
         # Progress bar
@@ -675,7 +707,7 @@ ITU BS1770: -23 LUFS, -1 dBTP (International)"""
         
         if filename:
             self.input_file = filename
-            self.file_label.config(text=Path(filename).name, foreground="black")
+            self.file_label.config(text=Path(filename).name, foreground=self.theme_colors['text_primary'])
             self.log(f"Selected: {Path(filename).name}")
     
     def check_input_file(self):
