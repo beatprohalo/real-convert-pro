@@ -10,8 +10,10 @@ import sys
 import re
 import json
 import threading
+from io import BytesIO
 from pathlib import Path
 from typing import List, Dict, Tuple, Optional
+from datetime import datetime, timezone
 import tkinter as tk
 from tkinter import ttk, filedialog, messagebox, scrolledtext
 import librosa
@@ -22,6 +24,7 @@ from pydub.utils import which
 
 # Import our intelligent audio analyzer
 from audio_analyzer import IntelligentAudioAnalyzer, AudioAnalysisResult
+from metadata_manager import MetadataManager, AudioMetadata
 
 class AudioConverter:
     def __init__(self, root):
@@ -93,7 +96,19 @@ class AudioConverter:
         self.analyze_loudness = tk.BooleanVar(value=True)
         self.analyze_fingerprint = tk.BooleanVar(value=True)
         self.auto_categorize_by_analysis = tk.BooleanVar(value=False)
-        
+
+        # Metadata management
+        self.metadata_manager = MetadataManager()
+        self.metadata_file_var = tk.StringVar(value="")
+        self.metadata_status_var = tk.StringVar(value="Select an audio file to begin.")
+        self.metadata_vars: Dict[str, tk.StringVar] = {}
+        self.metadata_comments_text = None
+        self.metadata_current_metadata: Optional[AudioMetadata] = None
+        self.metadata_analysis_result: Optional[AudioAnalysisResult] = None
+        self.metadata_file_display = None
+        self.metadata_analyze_button = None
+        self.metadata_save_button = None
+
         # Filename generation toggles - user can select which metadata to include
         self.include_key_in_filename = tk.BooleanVar(value=True)
         self.include_bpm_in_filename = tk.BooleanVar(value=False)
@@ -123,7 +138,10 @@ class AudioConverter:
         
         # Main conversion tab
         self.setup_main_tab(notebook)
-        
+
+        # Metadata & tags management tab
+        self.setup_metadata_tab(notebook)
+
         # Settings tab
         self.setup_settings_tab(notebook)
         
@@ -142,122 +160,124 @@ class AudioConverter:
         self.apply_theme()
     
     def apply_theme(self):
-        """Apply ML Bank inspired dark theme with teal and purple accents"""
+        """Apply a muted dark theme without bright or light tones."""
         self.style.theme_use('clam')
-        
-        # ML Bank inspired dark theme colors - NO LIGHT GRAY
-        bg_primary = '#1a1b2e'      # Deep navy blue (main background)
-        bg_secondary = '#16213e'    # Darker navy blue
-        bg_accent = '#0f3460'       # Medium dark blue for elements
-        teal_primary = '#4ecdc4'    # Bright teal (like ML Bank logo)
-        teal_secondary = '#44d9e8'  # Lighter teal
-        purple_accent = '#9b59b6'   # Purple gradient accent
-        text_white = '#ffffff'      # Clean white text
-        text_dark = '#1a1b2e'       # Dark navy for contrast
-        success_green = '#2ecc71'   # Green for progress/success
-        
-        # Configure main elements with ML Bank dark theme
-        self.style.configure('.', background=bg_primary, foreground=text_white)
-        self.style.configure('TFrame', 
-                           background=bg_primary, 
-                           borderwidth=0)
-        
-        self.style.configure('TLabel', 
-                           background=bg_primary, 
-                           foreground=text_white,
-                           font=('SF Pro Display', 11))
-        
-        self.style.configure('TButton', 
-                           background=teal_primary,
-                           foreground=text_white,
-                           borderwidth=0,
-                           relief='flat',
-                           font=('SF Pro Display', 10, 'bold'),
-                           padding=(20, 8))
-        
-        self.style.map('TButton',
-                     background=[('active', teal_secondary),
-                               ('pressed', '#3bcdcc')],
-                     relief=[('pressed', 'flat')])
-        
-        self.style.configure('TNotebook', 
-                           background=bg_primary,
-                           borderwidth=0)
-        
-        self.style.configure('TNotebook.Tab', 
-                           background=bg_secondary,
-                           foreground=text_white,
-                           padding=[20, 12],
-                           borderwidth=0,
-                           font=('SF Pro Display', 11))
-        
-        self.style.map('TNotebook.Tab',
-                     background=[('selected', teal_primary),
-                               ('active', bg_accent)],
-                     foreground=[('selected', text_white)])
-        
-        self.style.configure('TLabelFrame', 
-                           background=bg_primary,
-                           foreground=text_white,
-                           borderwidth=0,
-                           relief='flat')
-        
-        self.style.configure('TLabelFrame.Label', 
-                           background=bg_primary,
-                           foreground=text_white,
-                           font=('SF Pro Display', 12, 'bold'))
-        
-        self.style.configure('TCheckbutton', 
-                           background=bg_primary,
-                           foreground=text_white,
-                           focuscolor='none',
-                           font=('SF Pro Display', 10))
-        
-        self.style.configure('TEntry', 
-                           background=bg_accent,
-                           foreground=text_white,
-                           fieldbackground=bg_accent,
-                           borderwidth=1,
-                           relief='flat',
-                           insertcolor=text_white,
-                           padding=8)
-        
-        self.style.configure('TCombobox', 
-                           background=bg_accent,
-                           foreground=text_white,
-                           fieldbackground=bg_accent,
-                           borderwidth=1,
-                           relief='flat',
-                           padding=8)
-        
-        self.style.map('TCombobox',
-                     fieldbackground=[('readonly', bg_accent)],
-                     foreground=[('readonly', text_white)],
-                     selectbackground=[('readonly', bg_accent)],
-                     selectforeground=[('readonly', text_white)])
 
-        self.style.configure('TScale', 
-                           background=bg_primary,
-                           troughcolor=bg_accent,
-                           borderwidth=0,
-                           sliderthickness=15)
-        
+        bg_primary = '#0b0f16'
+        bg_secondary = '#111826'
+        bg_accent = '#1a2535'
+        button_primary = '#273445'
+        button_hover = '#324156'
+        button_pressed = '#212b3a'
+        text_primary = '#c3cad9'
+        text_subtle = '#9aa7bc'
+        progress_fill = '#3a5246'
+
+        self.style.configure('.', background=bg_primary, foreground=text_primary)
+        self.style.configure('TFrame', background=bg_primary, borderwidth=0)
+
+        self.style.configure('TLabel',
+                             background=bg_primary,
+                             foreground=text_primary,
+                             font=('SF Pro Display', 11))
+
+        for button_style in ('TButton', 'Accent.TButton'):
+            self.style.configure(button_style,
+                                 background=button_primary,
+                                 foreground=text_primary,
+                                 borderwidth=0,
+                                 relief='flat',
+                                 font=('SF Pro Display', 10, 'bold'),
+                                 padding=(20, 8))
+            self.style.map(button_style,
+                           background=[('active', button_hover),
+                                       ('pressed', button_pressed)])
+
+        self.style.configure('TNotebook', background=bg_primary, borderwidth=0)
+        self.style.configure('TNotebook.Tab',
+                             background=bg_secondary,
+                             foreground=text_primary,
+                             padding=[20, 12],
+                             borderwidth=0,
+                             font=('SF Pro Display', 11))
+        self.style.map('TNotebook.Tab',
+                       background=[('selected', button_primary),
+                                   ('active', bg_accent)],
+                       foreground=[('selected', text_primary)])
+
+        self.style.configure('TLabelFrame',
+                             background=bg_primary,
+                             foreground=text_primary,
+                             borderwidth=0,
+                             relief='flat')
+        self.style.configure('TLabelFrame.Label',
+                             background=bg_primary,
+                             foreground=text_primary,
+                             font=('SF Pro Display', 12, 'bold'))
+
+        self.style.configure('TCheckbutton',
+                             background=bg_primary,
+                             foreground=text_primary,
+                             focuscolor='none',
+                             font=('SF Pro Display', 10))
+
+        entry_kwargs = dict(background=bg_accent,
+                            foreground=text_primary,
+                            fieldbackground=bg_accent,
+                            borderwidth=1,
+                            relief='flat',
+                            insertcolor=text_primary,
+                            padding=8)
+        self.style.configure('TEntry', **entry_kwargs)
+        self.style.configure('TCombobox', **entry_kwargs)
+        self.style.map('TCombobox',
+                       fieldbackground=[('readonly', bg_accent)],
+                       foreground=[('readonly', text_primary)],
+                       selectbackground=[('readonly', bg_accent)],
+                       selectforeground=[('readonly', text_primary)])
+
+        self.style.configure('TScale',
+                             background=bg_primary,
+                             troughcolor=bg_accent,
+                             borderwidth=0,
+                             sliderthickness=15)
+
         self.style.configure('Horizontal.TScrollbar',
-                           background=bg_accent,
-                           troughcolor=bg_primary,
-                           borderwidth=0,
-                           arrowcolor=text_white)
-        
-        # Configure root window with beautiful purple gradient
+                             background=bg_accent,
+                             troughcolor=bg_primary,
+                             borderwidth=0,
+                             arrowcolor=text_primary)
+
+        self.style.configure('TProgressbar',
+                             background=progress_fill,
+                             troughcolor=bg_accent,
+                             borderwidth=0,
+                             lightcolor=progress_fill,
+                             darkcolor=progress_fill)
+
+        self.style.configure('Treeview',
+                             background=bg_secondary,
+                             fieldbackground=bg_secondary,
+                             foreground=text_primary,
+                             borderwidth=0)
+        self.style.map('Treeview', background=[('selected', bg_accent)])
+        self.style.configure('Treeview.Heading',
+                             background=bg_accent,
+                             foreground=text_primary,
+                             font=('SF Pro Display', 11, 'bold'))
+
         self.root.configure(bg=bg_primary)
-        
-        # Configure beautiful progress bar to match theme
-        self.style.configure('TProgressbar', 
-                           background=success_green,
-                           troughcolor=bg_accent,
-                           borderwidth=0,
-                           lightcolor=success_green,
-                           darkcolor=success_green)
+        self._theme_colors = {
+            'bg_primary': bg_primary,
+            'bg_secondary': bg_secondary,
+            'bg_accent': bg_accent,
+            'text_primary': text_primary,
+            'text_subtle': text_subtle,
+            'button_primary': button_primary,
+            'button_hover': button_hover,
+            'button_pressed': button_pressed,
+            'progress_fill': progress_fill
+        }
         
     def setup_main_tab(self, notebook):
         """Setup main conversion interface"""
@@ -279,11 +299,17 @@ class AudioConverter:
         list_frame = ttk.Frame(input_frame)
         list_frame.pack(fill=tk.BOTH, expand=True, pady=5)
         
-        self.input_listbox = tk.Listbox(list_frame, height=6,
-                                       bg='#16213e', fg='#ffffff',
-                                       selectbackground='#4ecdc4',
-                                       selectforeground='#1a1b2e',
-                                       font=('SF Pro Display', 10))
+        self.input_listbox = tk.Listbox(
+            list_frame,
+            height=6,
+            bg=self._theme_colors['bg_secondary'],
+            fg=self._theme_colors['text_primary'],
+            selectbackground=self._theme_colors['button_hover'],
+            selectforeground=self._theme_colors['text_primary'],
+            highlightthickness=0,
+            borderwidth=0,
+            font=('SF Pro Display', 10)
+        )
         scrollbar = ttk.Scrollbar(list_frame, orient=tk.VERTICAL, command=self.input_listbox.yview)
         self.input_listbox.configure(yscrollcommand=scrollbar.set)
         
@@ -298,7 +324,11 @@ class AudioConverter:
         folder_select_frame = ttk.Frame(output_frame)
         folder_select_frame.pack(fill=tk.X, pady=2)
         ttk.Label(folder_select_frame, text="Output Folder:").pack(side=tk.LEFT)
-        self.output_label = ttk.Label(folder_select_frame, text="Not selected", foreground="red")
+        self.output_label = ttk.Label(
+            folder_select_frame,
+            text="Not selected",
+            foreground=self._theme_colors['text_subtle']
+        )
         self.output_label.pack(side=tk.LEFT, padx=10)
         ttk.Button(folder_select_frame, text="Browse", command=self.select_output_folder).pack(side=tk.RIGHT)
         
@@ -375,10 +405,476 @@ class AudioConverter:
         
         # Progress bar
         self.progress_var = tk.DoubleVar()
-        self.progress_bar = ttk.Progressbar(convert_frame, variable=self.progress_var, 
+        self.progress_bar = ttk.Progressbar(convert_frame, variable=self.progress_var,
                                            length=300, mode='determinate')
         self.progress_bar.pack(side=tk.RIGHT, padx=10)
-        
+
+    def setup_metadata_tab(self, notebook):
+        """Create metadata and tagging management tab"""
+        metadata_frame = ttk.Frame(notebook)
+        notebook.add(metadata_frame, text="Metadata & Tags")
+
+        ttk.Label(
+            metadata_frame,
+            text="Inspect, analyze, and edit audio metadata. Use auto-analyze to fill BPM and key, then save changes.",
+            wraplength=600,
+            justify=tk.LEFT
+        ).pack(anchor=tk.W, padx=5, pady=(5, 0))
+
+        file_frame = ttk.Frame(metadata_frame)
+        file_frame.pack(fill=tk.X, padx=5, pady=5)
+
+        ttk.Label(file_frame, text="Selected File:").pack(side=tk.LEFT)
+        self.metadata_file_display = ttk.Label(
+            file_frame,
+            text="No file selected",
+            foreground=self._theme_colors['text_subtle'],
+            wraplength=600
+        )
+        self.metadata_file_display.pack(side=tk.LEFT, padx=10, fill=tk.X, expand=True)
+
+        selector_frame = ttk.Frame(metadata_frame)
+        selector_frame.pack(fill=tk.X, padx=5, pady=(0, 5))
+
+        ttk.Button(selector_frame, text="Choose File...", command=self.choose_metadata_file).pack(side=tk.LEFT)
+        ttk.Button(selector_frame, text="Use Selected Converter File", command=self.use_selected_converter_file).pack(side=tk.LEFT, padx=5)
+
+        fields_frame = ttk.LabelFrame(metadata_frame, text="Core Tags", padding=10)
+        fields_frame.pack(fill=tk.X, padx=5, pady=5)
+
+        field_specs = [
+            ("Title", "title"),
+            ("Artist", "artist"),
+            ("Album", "album"),
+            ("Genre", "genre"),
+            ("BPM", "bpm"),
+            ("Key", "key"),
+            ("Mood", "mood"),
+            ("Energy", "energy")
+        ]
+
+        self.metadata_vars = {name: tk.StringVar(value="") for _, name in field_specs}
+
+        for row, (label_text, key) in enumerate(field_specs):
+            ttk.Label(fields_frame, text=f"{label_text}:").grid(row=row, column=0, sticky=tk.W, padx=5, pady=4)
+            entry = tk.Entry(
+                fields_frame,
+                textvariable=self.metadata_vars[key],
+                bg=self._theme_colors['bg_secondary'],
+                fg=self._theme_colors['text_primary'],
+                insertbackground=self._theme_colors['text_primary'],
+                highlightthickness=1,
+                highlightcolor=self._theme_colors['bg_accent'],
+                relief=tk.FLAT
+            )
+            entry.grid(row=row, column=1, sticky=tk.EW, padx=5, pady=4)
+
+        fields_frame.columnconfigure(1, weight=1)
+
+        comments_frame = ttk.LabelFrame(metadata_frame, text="Comments & Notes", padding=10)
+        comments_frame.pack(fill=tk.BOTH, expand=True, padx=5, pady=(0, 5))
+
+        self.metadata_comments_text = scrolledtext.ScrolledText(
+            comments_frame,
+            height=5,
+            bg=self._theme_colors['bg_secondary'],
+            fg=self._theme_colors['text_primary'],
+            insertbackground=self._theme_colors['text_primary'],
+            borderwidth=0,
+            highlightthickness=0,
+            wrap=tk.WORD
+        )
+        self.metadata_comments_text.pack(fill=tk.BOTH, expand=True)
+
+        actions_frame = ttk.Frame(metadata_frame)
+        actions_frame.pack(fill=tk.X, padx=5, pady=5)
+
+        self.metadata_analyze_button = ttk.Button(
+            actions_frame,
+            text="Auto-Analyze & Fill",
+            command=self.auto_analyze_metadata,
+            state=tk.DISABLED
+        )
+        self.metadata_analyze_button.pack(side=tk.LEFT)
+
+        self.metadata_save_button = ttk.Button(
+            actions_frame,
+            text="Save Metadata",
+            command=self.save_metadata_edits,
+            state=tk.DISABLED
+        )
+        self.metadata_save_button.pack(side=tk.LEFT, padx=5)
+
+        ttk.Button(actions_frame, text="Reset", command=self.reset_metadata_fields).pack(side=tk.LEFT)
+
+        self.metadata_status_label = ttk.Label(
+            metadata_frame,
+            textvariable=self.metadata_status_var,
+            foreground=self._theme_colors['text_subtle']
+        )
+        self.metadata_status_label.pack(anchor=tk.W, padx=5, pady=(0, 8))
+
+    def choose_metadata_file(self):
+        """Prompt user to select a file for metadata editing"""
+        filetypes = [
+            ("Audio files", "*.wav *.mp3 *.flac *.ogg *.m4a *.aac *.wma *.aiff *.aif *.aifc"),
+            ("All files", "*.*")
+        ]
+        file_path = filedialog.askopenfilename(title="Select audio file", filetypes=filetypes)
+        if file_path:
+            self.load_metadata_for_file(file_path)
+
+    def use_selected_converter_file(self):
+        """Load metadata for the file selected in the converter list"""
+        selection = self.input_listbox.curselection()
+        if not selection:
+            messagebox.showwarning("No Selection", "Please select a file from the Converter tab first.")
+            return
+
+        index = selection[0]
+        folder_count = len(self.input_folders)
+        if index < folder_count:
+            messagebox.showinfo("Select File", "Please select an individual file entry (🎵) instead of a folder.")
+            return
+
+        file_index = index - folder_count
+        if 0 <= file_index < len(self.input_files):
+            self.load_metadata_for_file(self.input_files[file_index])
+
+    def load_metadata_for_file(self, file_path: str):
+        """Load metadata for a given audio file"""
+        if not file_path or not os.path.isfile(file_path):
+            messagebox.showerror("Invalid File", "The selected file could not be found.")
+            return
+
+        absolute_path = os.path.abspath(file_path)
+        self.metadata_file_var.set(absolute_path)
+
+        if self.metadata_file_display:
+            self.metadata_file_display.config(text=absolute_path, foreground=self._theme_colors['text_primary'])
+
+        self.metadata_status_var.set("Loading metadata...")
+        if self.metadata_analyze_button:
+            self.metadata_analyze_button.config(state=tk.DISABLED)
+        if self.metadata_save_button:
+            self.metadata_save_button.config(state=tk.DISABLED)
+
+        self.clear_metadata_fields()
+
+        def worker():
+            try:
+                metadata = self.metadata_manager.extract_file_metadata(absolute_path)
+            except Exception as exc:
+                self.root.after(0, lambda: self._metadata_load_failed(absolute_path, exc))
+                return
+
+            self.root.after(0, lambda: self._metadata_load_success(absolute_path, metadata))
+
+        threading.Thread(target=worker, daemon=True).start()
+
+    def _metadata_load_success(self, file_path: str, metadata: AudioMetadata):
+        """Handle successful metadata extraction"""
+        self.metadata_current_metadata = metadata
+        self.metadata_analysis_result = None
+        self.populate_metadata_fields(metadata)
+        self.metadata_status_var.set("Metadata loaded. You can edit fields or run Auto-Analyze.")
+        if self.metadata_analyze_button:
+            self.metadata_analyze_button.config(state=tk.NORMAL)
+        if self.metadata_save_button:
+            self.metadata_save_button.config(state=tk.NORMAL)
+        self.log(f"Loaded metadata for {os.path.basename(file_path)}")
+
+    def _metadata_load_failed(self, file_path: str, error: Exception):
+        """Handle metadata load failure"""
+        self.metadata_current_metadata = None
+        self.metadata_status_var.set(f"Failed to load metadata: {error}")
+        messagebox.showerror("Metadata Error", f"Could not load metadata for {os.path.basename(file_path)}:\n{error}")
+
+    def clear_metadata_fields(self):
+        """Reset metadata form fields"""
+        for var in self.metadata_vars.values():
+            var.set("")
+        if self.metadata_comments_text:
+            self.metadata_comments_text.delete("1.0", tk.END)
+
+    def populate_metadata_fields(self, metadata: Optional[AudioMetadata]):
+        """Populate UI fields with metadata information"""
+        if not metadata:
+            self.clear_metadata_fields()
+            return
+
+        def set_custom(field: str) -> str:
+            return metadata.custom_tags.get(field, "") if metadata.custom_tags else ""
+
+        self.metadata_vars['title'].set(set_custom('title'))
+        self.metadata_vars['artist'].set(set_custom('artist'))
+        self.metadata_vars['album'].set(set_custom('album'))
+        self.metadata_vars['genre'].set(metadata.genre or "")
+        self.metadata_vars['bpm'].set(self._format_numeric(metadata.bpm))
+        self.metadata_vars['key'].set(metadata.key or "")
+        self.metadata_vars['mood'].set(metadata.mood or "")
+        self.metadata_vars['energy'].set(self._format_numeric(metadata.energy_level, precision=3))
+
+        if self.metadata_comments_text:
+            self.metadata_comments_text.delete("1.0", tk.END)
+            comments = set_custom('comments')
+            if comments:
+                self.metadata_comments_text.insert(tk.END, comments)
+
+    def reset_metadata_fields(self):
+        """Revert metadata fields to the last loaded values"""
+        if self.metadata_current_metadata:
+            self.populate_metadata_fields(self.metadata_current_metadata)
+            self.metadata_status_var.set("Changes reset to last loaded metadata.")
+        else:
+            self.clear_metadata_fields()
+
+    def _format_numeric(self, value: Optional[float], precision: int = 2) -> str:
+        """Format numeric metadata values for display"""
+        if value is None:
+            return ""
+        formatted = f"{value:.{precision}f}"
+        if '.' in formatted:
+            formatted = formatted.rstrip('0').rstrip('.')
+        return formatted
+
+    def auto_analyze_metadata(self):
+        """Run automatic analysis for the currently loaded file"""
+        file_path = self.metadata_file_var.get()
+        if not file_path:
+            messagebox.showwarning("No File", "Select a file before running auto-analysis.")
+            return
+
+        if self.metadata_analyze_button:
+            self.metadata_analyze_button.config(state=tk.DISABLED)
+        self.metadata_status_var.set("Analyzing audio for BPM, key, and mood...")
+
+        def worker():
+            try:
+                analysis_result = self.audio_analyzer.analyze_audio_file(file_path)
+            except Exception as exc:
+                self.root.after(0, lambda: self._metadata_analysis_failed(exc))
+                return
+            self.root.after(0, lambda: self._metadata_analysis_complete(file_path, analysis_result))
+
+        threading.Thread(target=worker, daemon=True).start()
+
+    def _metadata_analysis_complete(self, file_path: str, analysis_result: Optional[AudioAnalysisResult]):
+        """Handle completion of metadata auto-analysis"""
+        if self.metadata_analyze_button:
+            self.metadata_analyze_button.config(state=tk.NORMAL)
+
+        if not analysis_result:
+            self.metadata_status_var.set("Analysis complete, but no results were returned.")
+            return
+
+        if self.metadata_current_metadata:
+            self._update_metadata_with_analysis(self.metadata_current_metadata, analysis_result)
+            self.metadata_current_metadata.last_analyzed = datetime.now(timezone.utc)
+            self.populate_metadata_fields(self.metadata_current_metadata)
+
+        absolute_path = os.path.abspath(file_path)
+        self.metadata_analysis_result = analysis_result
+        self.analysis_results[absolute_path] = analysis_result
+        self.metadata_status_var.set("Analysis complete! Review the populated fields and save to embed them.")
+        self.log(f"Auto-analysis finished for {os.path.basename(file_path)}")
+
+        if self.metadata_save_button:
+            self.metadata_save_button.config(state=tk.NORMAL)
+
+    def _metadata_analysis_failed(self, error: Exception):
+        """Handle analysis failures"""
+        if self.metadata_analyze_button:
+            self.metadata_analyze_button.config(state=tk.NORMAL)
+        self.metadata_status_var.set(f"Analysis failed: {error}")
+        messagebox.showerror("Analysis Error", f"Auto-analysis failed:\n{error}")
+
+    def save_metadata_edits(self):
+        """Persist metadata edits to the file"""
+        if not self.metadata_current_metadata:
+            messagebox.showwarning("No Metadata", "Load a file before saving metadata.")
+            return
+
+        metadata = self.metadata_current_metadata
+        file_path = metadata.file_path
+
+        def set_custom(field: str, value: str):
+            if value:
+                metadata.custom_tags[field] = value
+            elif metadata.custom_tags and field in metadata.custom_tags:
+                metadata.custom_tags.pop(field)
+
+        set_custom('title', self.metadata_vars['title'].get().strip())
+        set_custom('artist', self.metadata_vars['artist'].get().strip())
+        set_custom('album', self.metadata_vars['album'].get().strip())
+        set_custom('comments', self.metadata_comments_text.get("1.0", tk.END).strip() if self.metadata_comments_text else "")
+
+        metadata.genre = self.metadata_vars['genre'].get().strip() or None
+        metadata.key = self.metadata_vars['key'].get().strip() or None
+        metadata.mood = self.metadata_vars['mood'].get().strip() or None
+
+        bpm_text = self.metadata_vars['bpm'].get().strip()
+        if bpm_text:
+            try:
+                metadata.bpm = float(bpm_text)
+            except ValueError:
+                messagebox.showerror("Invalid BPM", "Please enter a numeric BPM value.")
+                return
+        else:
+            metadata.bpm = None
+
+        energy_text = self.metadata_vars['energy'].get().strip()
+        if energy_text:
+            try:
+                metadata.energy_level = float(energy_text)
+            except ValueError:
+                messagebox.showerror("Invalid Energy", "Energy should be a numeric value.")
+                return
+        else:
+            metadata.energy_level = None
+
+        # Update timestamps after editing
+        metadata.modified_date = datetime.now(timezone.utc)
+        metadata.last_analyzed = metadata.last_analyzed or datetime.now(timezone.utc)
+
+        write_success = self.metadata_manager.write_metadata_to_file(metadata)
+        if not write_success:
+            messagebox.showerror("Save Failed", "Could not write metadata to the selected file.")
+            self.metadata_status_var.set("Failed to write metadata.")
+            return
+
+        record_id = self.metadata_manager.save_metadata(metadata)
+        if record_id != -1 and self.metadata_analysis_result:
+            self.metadata_manager.add_processing_record(
+                record_id,
+                "metadata_edit",
+                {"auto_analysis": True},
+                file_path,
+                file_path,
+                True,
+                "Metadata edited via Real Convert Pro"
+            )
+
+        try:
+            stat = os.stat(file_path)
+            metadata.file_size = stat.st_size
+            metadata.modified_date = datetime.fromtimestamp(stat.st_mtime, tz=timezone.utc)
+        except FileNotFoundError:
+            pass
+
+        self.metadata_status_var.set("Metadata saved successfully.")
+        self.log(f"Metadata updated for {os.path.basename(file_path)}")
+
+    def _update_metadata_with_analysis(self, metadata: AudioMetadata, analysis: AudioAnalysisResult):
+        """Merge analysis data into metadata object"""
+        if not metadata or not analysis:
+            return
+
+        if analysis.bpm is not None:
+            metadata.bpm = analysis.bpm
+        if analysis.key:
+            metadata.key = analysis.key
+        if analysis.scale:
+            metadata.scale = analysis.scale
+        if analysis.genre_prediction:
+            metadata.genre = analysis.genre_prediction
+        if analysis.mood_prediction:
+            metadata.mood = analysis.mood_prediction
+        if analysis.energy_level is not None:
+            metadata.energy_level = analysis.energy_level
+        if analysis.danceability is not None:
+            metadata.danceability = analysis.danceability
+        if analysis.valence is not None:
+            metadata.valence = analysis.valence
+        if analysis.content_category:
+            metadata.content_type = analysis.content_category
+        if analysis.lufs_integrated is not None:
+            metadata.lufs_integrated = analysis.lufs_integrated
+        if analysis.peak_db is not None:
+            metadata.peak_db = analysis.peak_db
+        if analysis.lufs_integrated is not None and analysis.peak_db is not None:
+            metadata.dynamic_range = analysis.peak_db - analysis.lufs_integrated
+
+    def apply_metadata_to_output(self, input_file: str, output_file: str, audio_array: np.ndarray, sample_rate: int):
+        """Copy and enrich metadata from input file to output file"""
+        input_path = os.path.abspath(input_file)
+        output_path = os.path.abspath(output_file)
+
+        try:
+            source_metadata = self.metadata_manager.extract_file_metadata(input_path)
+        except Exception as exc:
+            self.log(f"⚠️ Metadata extraction failed for {os.path.basename(input_file)}: {exc}")
+            return
+
+        analysis_result = self.analysis_results.get(input_path)
+        if analysis_result:
+            self._update_metadata_with_analysis(source_metadata, analysis_result)
+
+        try:
+            output_metadata = self.metadata_manager.extract_file_metadata(output_path)
+        except Exception as exc:
+            self.log(f"⚠️ Unable to prepare metadata for {os.path.basename(output_file)}: {exc}")
+            return
+
+        if source_metadata.custom_tags:
+            output_metadata.custom_tags.update(source_metadata.custom_tags)
+
+        output_metadata.genre = source_metadata.genre or output_metadata.genre
+        output_metadata.bpm = source_metadata.bpm or output_metadata.bpm
+        output_metadata.key = source_metadata.key or output_metadata.key
+        output_metadata.scale = source_metadata.scale or output_metadata.scale
+        output_metadata.mood = source_metadata.mood or output_metadata.mood
+        if source_metadata.energy_level is not None:
+            output_metadata.energy_level = source_metadata.energy_level
+        if source_metadata.danceability is not None:
+            output_metadata.danceability = source_metadata.danceability
+        if source_metadata.valence is not None:
+            output_metadata.valence = source_metadata.valence
+        output_metadata.content_type = source_metadata.content_type or output_metadata.content_type
+
+        if audio_array is not None and audio_array.size:
+            frames = audio_array.shape[0] if audio_array.ndim == 1 else audio_array.shape[0]
+            channels = 1 if audio_array.ndim == 1 else audio_array.shape[1]
+            output_metadata.duration = frames / float(sample_rate)
+            output_metadata.sample_rate = sample_rate
+            output_metadata.channels = channels
+
+        output_metadata.original_file = input_path
+        if output_metadata.processing_history is None:
+            output_metadata.processing_history = []
+        output_metadata.processing_history.append({
+            "operation": "format_conversion",
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "input_file": input_path,
+            "output_file": output_path,
+            "target_format": self.selected_format.get(),
+            "sample_rate": sample_rate,
+            "bit_depth": self.bit_depth.get()
+        })
+
+        write_success = self.metadata_manager.write_metadata_to_file(output_metadata)
+        if not write_success:
+            self.log(f"⚠️ Unable to write metadata to {os.path.basename(output_file)}")
+            return
+
+        record_id = self.metadata_manager.save_metadata(output_metadata)
+        if record_id != -1:
+            self.metadata_manager.add_processing_record(
+                record_id,
+                "format_conversion",
+                {
+                    "target_format": self.selected_format.get(),
+                    "sample_rate": sample_rate,
+                    "bit_depth": self.bit_depth.get()
+                },
+                input_path,
+                output_path,
+                True,
+                "Converted via Real Convert Pro"
+            )
+
+        self.log(f"Metadata preserved for {os.path.basename(output_file)}")
+
     def setup_settings_tab(self, notebook):
         """Setup settings interface"""
         settings_frame = ttk.Frame(notebook)
@@ -425,8 +921,8 @@ class AudioConverter:
         theme_info_frame = ttk.Frame(appearance_frame)
         theme_info_frame.pack(fill=tk.X, pady=5)
         
-        ttk.Label(theme_info_frame, text="✨ Beautiful Purple Gradient Theme Active").pack(side=tk.LEFT)
-        ttk.Label(theme_info_frame, text="Optimized for readability and modern design").pack(side=tk.LEFT, padx=10)
+        ttk.Label(theme_info_frame, text="🌙 Subtle Midnight Theme Active").pack(side=tk.LEFT)
+        ttk.Label(theme_info_frame, text="Muted dark tones for comfortable editing").pack(side=tk.LEFT, padx=10)
         ttk.Checkbutton(proc_frame, text="Remove leading/trailing silence", 
                        variable=self.remove_silence).pack(anchor=tk.W)
         
@@ -445,10 +941,17 @@ class AudioConverter:
                  font=("Arial", 12, "bold")).pack(pady=10)
         
         # Categories list
-        self.categories_text = scrolledtext.ScrolledText(cat_frame, height=20, width=80,
-                                                        bg='#16213e', fg='#ffffff',
-                                                        font=('SF Pro Display', 10),
-                                                        insertbackground='#4ecdc4')
+        self.categories_text = scrolledtext.ScrolledText(
+            cat_frame,
+            height=20,
+            width=80,
+            bg=self._theme_colors['bg_secondary'],
+            fg=self._theme_colors['text_primary'],
+            font=('SF Pro Display', 10),
+            insertbackground=self._theme_colors['text_primary'],
+            borderwidth=0,
+            highlightthickness=0
+        )
         self.categories_text.pack(fill=tk.BOTH, expand=True, padx=10, pady=5)
         
         # Load current categories
@@ -673,11 +1176,10 @@ class AudioConverter:
             'category': (self.category_button, self.include_category_in_filename)
         }
         
-        # ML Bank theme colors for filename buttons
-        selected_bg = '#4ecdc4'     # Teal for selected (like ML Bank)
-        selected_fg = '#1a1b2e'     # Dark navy text
-        normal_bg = '#9b59b6'       # Purple for normal
-        normal_fg = '#ffffff'       # White text
+        selected_bg = self._theme_colors['button_primary']
+        selected_fg = self._theme_colors['text_primary']
+        normal_bg = self._theme_colors['bg_secondary']
+        normal_fg = self._theme_colors['text_subtle']
         
         for option, (button, var) in buttons.items():
             if var.get():
@@ -720,10 +1222,17 @@ class AudioConverter:
         ttk.Label(progress_frame, text="Conversion Log", 
                  font=("Arial", 12, "bold")).pack(pady=10)
         
-        self.log_text = scrolledtext.ScrolledText(progress_frame, height=25, width=100,
-                                                bg='#16213e', fg='#ffffff', 
-                                                font=('SF Pro Display', 10),
-                                                insertbackground='#4ecdc4')
+        self.log_text = scrolledtext.ScrolledText(
+            progress_frame,
+            height=25,
+            width=100,
+            bg=self._theme_colors['bg_secondary'],
+            fg=self._theme_colors['text_primary'],
+            font=('SF Pro Display', 10),
+            insertbackground=self._theme_colors['text_primary'],
+            borderwidth=0,
+            highlightthickness=0
+        )
         self.log_text.pack(fill=tk.BOTH, expand=True, padx=10, pady=5)
         
         # Clear log button
@@ -950,7 +1459,10 @@ class AudioConverter:
         folder = filedialog.askdirectory(title="Select output folder")
         if folder:
             self.output_folder = folder
-            self.output_label.config(text=folder, foreground="green")
+            self.output_label.config(
+                text=folder,
+                foreground=self._theme_colors['text_primary']
+            )
             
     def get_audio_files(self) -> List[str]:
         """Get all audio files from selected folders and files"""
@@ -1012,12 +1524,22 @@ class AudioConverter:
         info_window = tk.Toplevel(self.root)
         info_window.title("Supported Audio Formats")
         info_window.geometry("800x600")
-        
+        info_window.configure(bg=self._theme_colors['bg_primary'])
+
         # Create scrollable text widget
         text_frame = ttk.Frame(info_window)
         text_frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
-        
-        text_widget = scrolledtext.ScrolledText(text_frame, wrap=tk.WORD, font=("Consolas", 10))
+
+        text_widget = scrolledtext.ScrolledText(
+            text_frame,
+            wrap=tk.WORD,
+            font=("Consolas", 10),
+            bg=self._theme_colors['bg_secondary'],
+            fg=self._theme_colors['text_primary'],
+            insertbackground=self._theme_colors['text_primary'],
+            borderwidth=0,
+            highlightthickness=0
+        )
         text_widget.pack(fill=tk.BOTH, expand=True)
         
         format_info = """
@@ -1263,12 +1785,22 @@ FOR ARCHIVAL:
         capabilities_window = tk.Toplevel(self.root)
         capabilities_window.title("System Capabilities & Format Support")
         capabilities_window.geometry("700x500")
-        
+        capabilities_window.configure(bg=self._theme_colors['bg_primary'])
+
         # Create scrollable text widget
         text_frame = ttk.Frame(capabilities_window)
         text_frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
-        
-        text_widget = scrolledtext.ScrolledText(text_frame, wrap=tk.WORD, font=("Consolas", 10))
+
+        text_widget = scrolledtext.ScrolledText(
+            text_frame,
+            wrap=tk.WORD,
+            font=("Consolas", 10),
+            bg=self._theme_colors['bg_secondary'],
+            fg=self._theme_colors['text_primary'],
+            insertbackground=self._theme_colors['text_primary'],
+            borderwidth=0,
+            highlightthickness=0
+        )
         text_widget.pack(fill=tk.BOTH, expand=True)
         
         # Check system dependencies
@@ -1389,6 +1921,7 @@ FOR ARCHIVAL:
         preview_window = tk.Toplevel(self.root)
         preview_window.title("Quick Analysis Preview")
         preview_window.geometry("600x400")
+        preview_window.configure(bg=self._theme_colors['bg_primary'])
         
         ttk.Label(preview_window, text="Quick Analysis Preview", 
                  font=("Arial", 14, "bold")).pack(pady=10)
@@ -1398,7 +1931,16 @@ FOR ARCHIVAL:
         preview_progress.pack(pady=5)
         
         # Results text
-        preview_text = scrolledtext.ScrolledText(preview_window, height=20, width=70)
+        preview_text = scrolledtext.ScrolledText(
+            preview_window,
+            height=20,
+            width=70,
+            bg=self._theme_colors['bg_secondary'],
+            fg=self._theme_colors['text_primary'],
+            insertbackground=self._theme_colors['text_primary'],
+            borderwidth=0,
+            highlightthickness=0
+        )
         preview_text.pack(fill=tk.BOTH, expand=True, padx=10, pady=5)
         
         def preview_worker():
@@ -1609,6 +2151,7 @@ FOR ARCHIVAL:
         dup_window = tk.Toplevel(self.root)
         dup_window.title("Potential Duplicate Files")
         dup_window.geometry("600x400")
+        dup_window.configure(bg=self._theme_colors['bg_primary'])
         
         ttk.Label(dup_window, text="Potential Duplicate Files", 
                  font=("Arial", 14, "bold")).pack(pady=10)
@@ -1617,7 +2160,16 @@ FOR ARCHIVAL:
         text_frame = ttk.Frame(dup_window)
         text_frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=5)
         
-        dup_text = scrolledtext.ScrolledText(text_frame, height=20, width=70)
+        dup_text = scrolledtext.ScrolledText(
+            text_frame,
+            height=20,
+            width=70,
+            bg=self._theme_colors['bg_secondary'],
+            fg=self._theme_colors['text_primary'],
+            insertbackground=self._theme_colors['text_primary'],
+            borderwidth=0,
+            highlightthickness=0
+        )
         dup_text.pack(fill=tk.BOTH, expand=True)
         
         # Display duplicates
@@ -1652,18 +2204,48 @@ FOR ARCHIVAL:
         
         if result:
             self.show_analysis_details_window(result)
-    
+
+    def _prepare_audio_for_export(self, audio_data: np.ndarray) -> np.ndarray:
+        """Normalize audio array for exporting, preserving channel layout."""
+        cleaned = np.nan_to_num(audio_data, nan=0.0)
+        cleaned = np.clip(cleaned, -1.0, 1.0)
+        if cleaned.ndim == 2 and cleaned.shape[0] < cleaned.shape[1]:
+            cleaned = cleaned.T
+        return cleaned
+
+    def _create_audio_segment(self, audio_data: np.ndarray, sample_rate: int) -> AudioSegment:
+        """Create an AudioSegment from numpy audio data with correct PCM encoding."""
+        prepared = self._prepare_audio_for_export(audio_data)
+        buffer = BytesIO()
+        subtype_map = {16: 'PCM_16', 24: 'PCM_24', 32: 'PCM_32'}
+        subtype = subtype_map.get(self.bit_depth.get(), 'PCM_16')
+        sf.write(buffer, prepared, sample_rate, subtype=subtype)
+        buffer.seek(0)
+        segment = AudioSegment.from_file(buffer, format='wav')
+        buffer.close()
+        return segment
+
     def show_analysis_details_window(self, result: AudioAnalysisResult):
         """Show detailed analysis in a separate window"""
         details_window = tk.Toplevel(self.root)
         details_window.title(f"Analysis Details - {result.filename}")
         details_window.geometry("500x600")
+        details_window.configure(bg=self._theme_colors['bg_primary'])
         
         # Create scrolled text for details
         text_frame = ttk.Frame(details_window)
         text_frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
         
-        details_text = scrolledtext.ScrolledText(text_frame, height=30, width=60)
+        details_text = scrolledtext.ScrolledText(
+            text_frame,
+            height=30,
+            width=60,
+            bg=self._theme_colors['bg_secondary'],
+            fg=self._theme_colors['text_primary'],
+            insertbackground=self._theme_colors['text_primary'],
+            borderwidth=0,
+            highlightthickness=0
+        )
         details_text.pack(fill=tk.BOTH, expand=True)
         
         # Format detailed information
@@ -1993,6 +2575,8 @@ FOR ARCHIVAL:
             
             # Ensure output directory exists
             os.makedirs(os.path.dirname(output_file), exist_ok=True)
+
+            audio_for_export = self._prepare_audio_for_export(y)
             
             # Categorize formats for optimal processing
             uncompressed_formats = ['wav', 'aiff', 'aifc', 'au', 'caf', 'w64', 'rf64', 'bwf', 'sd2', 'snd', 'iff', 'svx', 'nist', 'voc', 'ircam', 'xi', 'caff']
@@ -2009,30 +2593,20 @@ FOR ARCHIVAL:
                 if selected_fmt in uncompressed_formats or selected_fmt in lossless_formats:
                     # Use soundfile for high-quality formats
                     if selected_fmt in ['wav', 'flac', 'aiff', 'aifc']:
-                        sf.write(output_file, y, sr, subtype=f'PCM_{self.bit_depth.get()}')
+                        sf.write(output_file, audio_for_export, sr, subtype=f'PCM_{self.bit_depth.get()}')
                     else:
                         # For other lossless/uncompressed, convert via pydub but maintain quality
-                        audio_segment = AudioSegment(
-                            y.tobytes(), 
-                            frame_rate=sr,
-                            sample_width=self.bit_depth.get() // 8,
-                            channels=1 if len(y.shape) == 1 else y.shape[0]
-                        )
+                        audio_segment = self._create_audio_segment(audio_for_export, sr)
                         # Set high quality parameters for lossless formats
                         if selected_fmt == 'flac':
                             audio_segment.export(output_file, format=selected_fmt, parameters=["-compression_level", "8"])
                         else:
                             audio_segment.export(output_file, format=selected_fmt)
-                            
+
                 elif selected_fmt in lossy_formats or selected_fmt in apple_formats:
                     # Use pydub for compressed formats with quality optimization
-                    audio_segment = AudioSegment(
-                        y.tobytes(), 
-                        frame_rate=sr,
-                        sample_width=self.bit_depth.get() // 8,
-                        channels=1 if len(y.shape) == 1 else y.shape[0]
-                    )
-                    
+                    audio_segment = self._create_audio_segment(audio_for_export, sr)
+
                     # Format-specific quality settings
                     if selected_fmt == 'mp3':
                         audio_segment.export(output_file, format=selected_fmt, bitrate="320k")
@@ -2050,12 +2624,7 @@ FOR ARCHIVAL:
                         
                 elif selected_fmt in video_formats:
                     # Extract audio from video containers or create video with audio
-                    audio_segment = AudioSegment(
-                        y.tobytes(), 
-                        frame_rate=sr,
-                        sample_width=self.bit_depth.get() // 8,
-                        channels=1 if len(y.shape) == 1 else y.shape[0]
-                    )
+                    audio_segment = self._create_audio_segment(audio_for_export, sr)
                     if selected_fmt in ['mp4', 'm4v']:
                         audio_segment.export(output_file, format='mp4', codec='aac')
                     elif selected_fmt == 'webm':
@@ -2069,42 +2638,32 @@ FOR ARCHIVAL:
                     # Handle raw audio formats
                     if selected_fmt == 'raw' or selected_fmt == 'pcm':
                         # Save as raw PCM data
-                        y_int = (y * 32767).astype(np.int16)
+                        pcm16 = np.round(audio_for_export * 32767).astype('<i2')
+                        if pcm16.ndim == 2:
+                            pcm16 = pcm16.reshape(-1, pcm16.shape[1])
+                            pcm16 = pcm16.flatten()
                         with open(output_file, 'wb') as f:
-                            f.write(y_int.tobytes())
+                            f.write(pcm16.tobytes())
                     else:
                         # Use pydub for other raw formats
-                        audio_segment = AudioSegment(
-                            y.tobytes(), 
-                            frame_rate=sr,
-                            sample_width=self.bit_depth.get() // 8,
-                            channels=1 if len(y.shape) == 1 else y.shape[0]
-                        )
+                        audio_segment = self._create_audio_segment(audio_for_export, sr)
                         audio_segment.export(output_file, format=selected_fmt)
-                        
+
                 else:
                     # Fallback: try pydub for any other format
-                    audio_segment = AudioSegment(
-                        y.tobytes(), 
-                        frame_rate=sr,
-                        sample_width=self.bit_depth.get() // 8,
-                        channels=1 if len(y.shape) == 1 else y.shape[0]
-                    )
+                    audio_segment = self._create_audio_segment(audio_for_export, sr)
                     audio_segment.export(output_file, format=selected_fmt)
-                    
+
             except Exception as format_error:
                 # If format-specific export fails, try generic export
                 self.log(f"Format-specific export failed, trying generic export: {format_error}")
-                audio_segment = AudioSegment(
-                    y.tobytes(), 
-                    frame_rate=sr,
-                    sample_width=self.bit_depth.get() // 8,
-                    channels=1 if len(y.shape) == 1 else y.shape[0]
-                )
+                audio_segment = self._create_audio_segment(audio_for_export, sr)
                 audio_segment.export(output_file, format=selected_fmt)
-            
+
+            self.apply_metadata_to_output(input_file, output_file, audio_for_export, sr)
+
             return True
-            
+
         except Exception as e:
             self.log(f"Error processing {input_file}: {str(e)}")
             return False

@@ -18,7 +18,7 @@ import mutagen
 from mutagen.id3 import ID3, TIT2, TPE1, TALB, TDRC, TCON, TBPM, TKEY, COMM, TXXX
 from mutagen.mp3 import MP3
 from mutagen.flac import FLAC
-from mutagen.mp4 import MP4
+from mutagen.mp4 import MP4, MP4FreeForm
 from mutagen.wave import WAVE
 
 # Import our audio analyzer
@@ -306,7 +306,7 @@ class MetadataManager:
         tags = audio_file.tags
         if not tags:
             return
-        
+
         # Standard tags
         if 'TIT2' in tags:  # Title
             metadata.custom_tags['title'] = str(tags['TIT2'])
@@ -323,20 +323,46 @@ class MetadataManager:
                 pass
         if 'TKEY' in tags:  # Key
             metadata.key = str(tags['TKEY'])
-    
+
+        # Comments
+        for comment in tags.getall('COMM'):
+            text = comment.text[0] if comment.text else ''
+            if text:
+                metadata.custom_tags['comments'] = text
+                break
+
+        # Custom frames (mood, energy, content type)
+        for frame in tags.getall('TXXX'):
+            desc = (frame.desc or '').lower()
+            value = frame.text[0] if frame.text else ''
+            if not value:
+                continue
+            if desc == 'mood':
+                metadata.mood = value
+            elif desc == 'energy':
+                try:
+                    metadata.energy_level = float(value)
+                except ValueError:
+                    metadata.energy_level = None
+            elif desc == 'content_type':
+                metadata.content_type = value
+
     def _extract_flac_tags(self, audio_file, metadata: AudioMetadata):
         """Extract Vorbis comments from FLAC files"""
         if not audio_file.tags:
             return
-        
+
         tags = audio_file.tags
-        
+
         # Standard Vorbis comments
         metadata.custom_tags['title'] = tags.get('TITLE', [''])[0]
         metadata.custom_tags['artist'] = tags.get('ARTIST', [''])[0]
         metadata.custom_tags['album'] = tags.get('ALBUM', [''])[0]
         metadata.genre = tags.get('GENRE', [''])[0]
-        
+
+        # Comments and extended attributes
+        metadata.custom_tags['comments'] = tags.get('COMMENT', [''])[0]
+
         # BPM
         bpm_str = tags.get('BPM', [''])[0]
         if bpm_str:
@@ -344,21 +370,97 @@ class MetadataManager:
                 metadata.bpm = float(bpm_str)
             except ValueError:
                 pass
-        
+
         # Key
         metadata.key = tags.get('KEY', [''])[0]
-    
+
+        # Additional descriptors
+        metadata.mood = tags.get('MOOD', [''])[0] or metadata.mood
+        energy_str = tags.get('ENERGY', [''])[0]
+        if energy_str:
+            try:
+                metadata.energy_level = float(energy_str)
+            except ValueError:
+                pass
+
+        dance_str = tags.get('DANCEABILITY', [''])[0]
+        if dance_str:
+            try:
+                metadata.danceability = float(dance_str)
+            except ValueError:
+                pass
+
+        valence_str = tags.get('VALENCE', [''])[0]
+        if valence_str:
+            try:
+                metadata.valence = float(valence_str)
+            except ValueError:
+                pass
+
+        metadata.content_type = tags.get('CONTENT_TYPE', [''])[0] or metadata.content_type
+
     def _extract_mp4_tags(self, audio_file, metadata: AudioMetadata):
         """Extract metadata from MP4/M4A files"""
         tags = audio_file.tags
         if not tags:
             return
-        
+
         # MP4 atom names
         metadata.custom_tags['title'] = tags.get('\xa9nam', [''])[0]
         metadata.custom_tags['artist'] = tags.get('\xa9ART', [''])[0]
         metadata.custom_tags['album'] = tags.get('\xa9alb', [''])[0]
         metadata.genre = tags.get('\xa9gen', [''])[0]
+        metadata.custom_tags['comments'] = tags.get('\xa9cmt', [''])[0]
+
+        if 'tmpo' in tags and tags['tmpo']:
+            try:
+                metadata.bpm = float(tags['tmpo'][0])
+            except (ValueError, TypeError):
+                metadata.bpm = metadata.bpm
+
+        def decode_freeform(atom_name):
+            value = tags.get(atom_name)
+            if not value:
+                return None
+            try:
+                return value[0].decode('utf-8')
+            except AttributeError:
+                return value[0]
+            except Exception:
+                return None
+
+        key_value = decode_freeform('----:com.apple.iTunes:KEY')
+        if key_value:
+            metadata.key = key_value
+
+        mood_value = decode_freeform('----:com.apple.iTunes:MOOD')
+        if mood_value:
+            metadata.mood = mood_value
+
+        energy_value = decode_freeform('----:com.apple.iTunes:ENERGY')
+        if energy_value:
+            try:
+                metadata.energy_level = float(energy_value)
+            except ValueError:
+                pass
+
+        dance_value = decode_freeform('----:com.apple.iTunes:DANCEABILITY')
+        if dance_value:
+            try:
+                metadata.danceability = float(dance_value)
+            except ValueError:
+                pass
+
+        valence_value = decode_freeform('----:com.apple.iTunes:VALENCE')
+        if valence_value:
+            try:
+                metadata.valence = float(valence_value)
+            except ValueError:
+                pass
+
+        content_value = decode_freeform('----:com.apple.iTunes:CONTENT_TYPE')
+        if content_value:
+            metadata.content_type = content_value
     
     def _merge_analysis_results(self, analysis: AudioAnalysisResult, metadata: AudioMetadata):
         """Merge audio analysis results into metadata"""
@@ -557,6 +659,16 @@ class MetadataManager:
                 audio_file.add_tags()
             
             # Set standard tags
+            audio_file.tags.delall('TIT2')
+            audio_file.tags.delall('TPE1')
+            audio_file.tags.delall('TALB')
+            audio_file.tags.delall('TCON')
+            audio_file.tags.delall('TBPM')
+            audio_file.tags.delall('TKEY')
+            for desc in ['MOOD', 'ENERGY', 'CONTENT_TYPE', 'DANCEABILITY', 'VALENCE']:
+                audio_file.tags.delall(f'TXXX:{desc}')
+            audio_file.tags.delall('COMM::eng')
+
             if metadata.custom_tags.get('title'):
                 audio_file.tags.add(TIT2(encoding=3, text=metadata.custom_tags['title']))
             if metadata.custom_tags.get('artist'):
@@ -566,10 +678,15 @@ class MetadataManager:
             if metadata.genre:
                 audio_file.tags.add(TCON(encoding=3, text=metadata.genre))
             if metadata.bpm:
-                audio_file.tags.add(TBPM(encoding=3, text=str(int(metadata.bpm))))
+                audio_file.tags.add(TBPM(encoding=3, text=str(int(round(metadata.bpm)))))
             if metadata.key:
                 audio_file.tags.add(TKEY(encoding=3, text=metadata.key))
-            
+
+            # Add comments
+            comments = metadata.custom_tags.get('comments')
+            if comments:
+                audio_file.tags.add(COMM(encoding=3, lang='eng', desc='Comment', text=comments))
+
             # Add custom tags as TXXX frames
             if metadata.mood:
                 audio_file.tags.add(TXXX(encoding=3, desc='MOOD', text=metadata.mood))
@@ -577,10 +694,14 @@ class MetadataManager:
                 audio_file.tags.add(TXXX(encoding=3, desc='ENERGY', text=str(metadata.energy_level)))
             if metadata.content_type:
                 audio_file.tags.add(TXXX(encoding=3, desc='CONTENT_TYPE', text=metadata.content_type))
-            
+            if metadata.danceability is not None:
+                audio_file.tags.add(TXXX(encoding=3, desc='DANCEABILITY', text=str(metadata.danceability)))
+            if metadata.valence is not None:
+                audio_file.tags.add(TXXX(encoding=3, desc='VALENCE', text=str(metadata.valence)))
+
             audio_file.save()
             return True
-            
+
         except Exception as e:
             print(f"Error writing MP3 metadata: {e}")
             return False
@@ -594,6 +715,12 @@ class MetadataManager:
                 audio_file.add_tags()
             
             # Set Vorbis comments
+            # Clear existing values to avoid duplicates
+            for tag in ['TITLE', 'ARTIST', 'ALBUM', 'GENRE', 'BPM', 'KEY', 'MOOD',
+                        'ENERGY', 'COMMENT', 'DANCEABILITY', 'VALENCE', 'CONTENT_TYPE']:
+                if tag in audio_file.tags:
+                    del audio_file.tags[tag]
+
             if metadata.custom_tags.get('title'):
                 audio_file.tags['TITLE'] = metadata.custom_tags['title']
             if metadata.custom_tags.get('artist'):
@@ -603,42 +730,77 @@ class MetadataManager:
             if metadata.genre:
                 audio_file.tags['GENRE'] = metadata.genre
             if metadata.bpm:
-                audio_file.tags['BPM'] = str(int(metadata.bpm))
+                audio_file.tags['BPM'] = str(int(round(metadata.bpm)))
             if metadata.key:
                 audio_file.tags['KEY'] = metadata.key
             if metadata.mood:
                 audio_file.tags['MOOD'] = metadata.mood
             if metadata.energy_level is not None:
                 audio_file.tags['ENERGY'] = str(metadata.energy_level)
-            
+            if metadata.custom_tags.get('comments'):
+                audio_file.tags['COMMENT'] = metadata.custom_tags['comments']
+            if metadata.danceability is not None:
+                audio_file.tags['DANCEABILITY'] = str(metadata.danceability)
+            if metadata.valence is not None:
+                audio_file.tags['VALENCE'] = str(metadata.valence)
+            if metadata.content_type:
+                audio_file.tags['CONTENT_TYPE'] = metadata.content_type
+
             audio_file.save()
             return True
-            
+
         except Exception as e:
             print(f"Error writing FLAC metadata: {e}")
             return False
-    
+
     def _handle_mp4_metadata(self, metadata: AudioMetadata) -> bool:
         """Write metadata to MP4/M4A file"""
         try:
             audio_file = MP4(metadata.file_path)
-            
+
             if audio_file.tags is None:
                 audio_file.add_tags()
-            
+
+            # Clear existing atoms we will manage
+            for atom in ['\xa9nam', '\xa9ART', '\xa9alb', '\xa9gen', '\xa9cmt', 'tmpo',
+                         '----:com.apple.iTunes:KEY', '----:com.apple.iTunes:MOOD',
+                         '----:com.apple.iTunes:ENERGY', '----:com.apple.iTunes:DANCEABILITY',
+                         '----:com.apple.iTunes:VALENCE', '----:com.apple.iTunes:CONTENT_TYPE']:
+                if atom in audio_file.tags:
+                    del audio_file.tags[atom]
+
             # Set MP4 atoms
             if metadata.custom_tags.get('title'):
-                audio_file.tags['\xa9nam'] = metadata.custom_tags['title']
+                audio_file.tags['\xa9nam'] = [metadata.custom_tags['title']]
             if metadata.custom_tags.get('artist'):
-                audio_file.tags['\xa9ART'] = metadata.custom_tags['artist']
+                audio_file.tags['\xa9ART'] = [metadata.custom_tags['artist']]
             if metadata.custom_tags.get('album'):
-                audio_file.tags['\xa9alb'] = metadata.custom_tags['album']
+                audio_file.tags['\xa9alb'] = [metadata.custom_tags['album']]
             if metadata.genre:
-                audio_file.tags['\xa9gen'] = metadata.genre
-            
+                audio_file.tags['\xa9gen'] = [metadata.genre]
+            if metadata.custom_tags.get('comments'):
+                audio_file.tags['\xa9cmt'] = [metadata.custom_tags['comments']]
+            if metadata.bpm:
+                audio_file.tags['tmpo'] = [int(round(metadata.bpm))]
+            if metadata.key:
+                audio_file.tags['----:com.apple.iTunes:KEY'] = [MP4FreeForm(metadata.key.encode('utf-8'))]
+            if metadata.mood:
+                audio_file.tags['----:com.apple.iTunes:MOOD'] = [MP4FreeForm(metadata.mood.encode('utf-8'))]
+            if metadata.energy_level is not None:
+                energy_str = f"{metadata.energy_level:.3f}"
+                audio_file.tags['----:com.apple.iTunes:ENERGY'] = [MP4FreeForm(energy_str.encode('utf-8'))]
+            if metadata.danceability is not None:
+                dance_str = f"{metadata.danceability:.3f}"
+                audio_file.tags['----:com.apple.iTunes:DANCEABILITY'] = [MP4FreeForm(dance_str.encode('utf-8'))]
+            if metadata.valence is not None:
+                valence_str = f"{metadata.valence:.3f}"
+                audio_file.tags['----:com.apple.iTunes:VALENCE'] = [MP4FreeForm(valence_str.encode('utf-8'))]
+            if metadata.content_type:
+                audio_file.tags['----:com.apple.iTunes:CONTENT_TYPE'] = [MP4FreeForm(metadata.content_type.encode('utf-8'))]
+
             audio_file.save()
             return True
-            
+
         except Exception as e:
             print(f"Error writing MP4 metadata: {e}")
             return False
